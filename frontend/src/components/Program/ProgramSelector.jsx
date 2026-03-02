@@ -1,4 +1,4 @@
-import React from 'react';
+import React,{ useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // ← Добавить
 import {
   Card,
@@ -26,6 +26,26 @@ const ProgramSelector = ({ programs, selectedProgram, onSelectProgram }) => {
       navigate(`/calculate/${selectedProgram.id}`);
     }
   };
+
+  
+  const [school, setSchool] = useState("");
+  
+  const handleChangeSchool = (e) => {
+    setSchool(e.target.value);
+  };
+
+  const filteredPrograms = programs.filter(program => {
+    return (
+      (school === "" || program.school_name === school)
+    );
+  });
+
+  const groupedPrograms = filteredPrograms.reduce((acc, program) => {
+    if (!acc[program.school_name]) acc[program.school_name] = [];
+    acc[program.school_name].push(program);
+    return acc;
+  }, {});
+
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
@@ -34,13 +54,39 @@ const ProgramSelector = ({ programs, selectedProgram, onSelectProgram }) => {
       <Typography variant="body1" color="text.secondary" paragraph>
         Для расчета среднего балла ЕГЭ выберите направление из списка
       </Typography>
+
+      <label>
+        Выберите школу:
+        <select value={school} onChange={handleChangeSchool}>
+          <option value="">----</option>
+          <option value="ИМКТ">ИМКТ</option>
+          <option value="ШЭМ">ШЭМ</option>
+          <option value="ШМиНЖ">ШМиНЖ</option>
+          <option value="ИТПМ">ИТПМ</option>
+          <option value="ИФКС">ИФКС</option>
+          <option value="ЮШ">ЮШ</option>
+          <option value="ШИГН">ШИГН</option>
+          <option value="ПИШ">ПИШ</option>
+          <option value="ШП">ШП</option>
+          <option value="ВИ">ВИ</option>
+          <option value="ИМО">ИМО</option>
+          <option value="ПИ">ПИ</option>
+        </select>
+      </label>
       
+      {Object.entries(groupedPrograms).map(([schoolName, programs]) => (
+        <Box key={schoolName} sx={{ mt: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            {schoolName}
+          </Typography>
+          <Divider sx={{ my: 1, borderBottomWidth: 2 }} />
+
       <Grid container spacing={3} sx={{ mt: 2 }}>
         {programs.map((program) => (
           <Grid item xs={12} md={12} lg={12} key={program.id}>
             <Card 
               variant="outlined"
-              sx={{ 
+              sx={{
                 height: '100%',
                 borderColor: selectedProgram?.id === program.id ? 'primary.main' : 'divider',
                 borderWidth: selectedProgram?.id === program.id ? 2 : 1,
@@ -147,6 +193,8 @@ const ProgramSelector = ({ programs, selectedProgram, onSelectProgram }) => {
           </Grid>
         ))}
       </Grid>
+      </Box>
+      ))}
       
       {selectedProgram && (
         <Box sx={{ mt: 4, textAlign: 'center' }}>
