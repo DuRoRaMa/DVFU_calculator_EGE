@@ -8,6 +8,7 @@ import ScenarioPage from './pages/ScenarioPage';
 import { getPrograms } from './services/api';
 import Loader from './components/Common/Loader';
 import ErrorAlert from './components/Common/ErrorAlert';
+import Login from './components/Auth/Login';
 
 // Тема в стиле ДВФУ (синие цвета)
 const theme = createTheme({
@@ -29,13 +30,16 @@ function App() {
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('accessToken') || null);
+
 
   // Загружаем список программ при старте
   useEffect(() => {
+    if (!token) return;
     const loadPrograms = async () => {
       try {
         setLoading(true);
-        const response = await getPrograms();
+        const response = await getPrograms({ token });
         setPrograms(response.data);
       } catch (err) {
         setError('Ошибка загрузки программ');
@@ -46,12 +50,28 @@ function App() {
     };
     
     loadPrograms();
-  }, []);
+  }, [token]);
 
   const handleSelectProgram = (program) => {
     setSelectedProgram(program);
     setError(null);
   };
+
+  // Функция logout
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    setToken(null);
+    setSelectedProgram(null);
+  };
+
+  if (!token) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Login setToken={setToken} />
+      </ThemeProvider>
+    );
+  }
 
   if (loading) {
     return <Loader message="Загрузка программ..." />;
@@ -61,7 +81,7 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Header />
+        <Header onLogout={handleLogout}/>
         <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
           <ErrorAlert error={error} onClose={() => setError(null)} />
           
