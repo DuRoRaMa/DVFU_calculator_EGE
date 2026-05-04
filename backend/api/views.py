@@ -1,6 +1,5 @@
 from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404
-
 from rest_framework import generics, status
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -11,6 +10,10 @@ from .models import (
     DataImport,
     EducationPrograms,
     ImportSettings,
+)
+from .recommendation_engine import (
+    RecommendationValidationError,
+    build_recommendations,
 )
 from .serializers import (
     DataImportSerializer,
@@ -60,7 +63,6 @@ class DirectionStatsView(APIView):
         }
 
         result = []
-
         for item in grouped_data:
             program = programs_by_code.get(item['direction_code'])
             admission_plan = program.admission_plan if program else 0
@@ -125,7 +127,6 @@ class UniversityStatsView(APIView):
             .aggregate(value=Sum('avg_score'))['value']
             or 0
         )
-
         total_admission_plan = (
             EducationPrograms.objects
             .filter(status='Активно')
@@ -204,7 +205,6 @@ class ImportSettingsView(APIView):
 
     def patch(self, request):
         settings_obj, _ = ImportSettings.objects.get_or_create(id=1)
-
         serializer = ImportSettingsSerializer(
             settings_obj,
             data=request.data,
@@ -212,7 +212,6 @@ class ImportSettingsView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
         return Response(serializer.data)
 
 
@@ -253,7 +252,6 @@ class CalculateView(APIView):
 
             try:
                 avg_score = float(applicant['avg_score'])
-
                 if not (0 <= avg_score <= 100):
                     invalid_applicants.append({
                         'index': idx,
@@ -289,7 +287,6 @@ class CalculateView(APIView):
 
         applicants_details = []
         valid_ids = {applicant['id'] for applicant in valid_applicants}
-
         for applicant in applicants:
             is_valid = applicant.get('id') in valid_ids
             applicants_details.append({
@@ -315,7 +312,8 @@ class CalculateView(APIView):
                 'selection_utilization': f'{len(applicants)}/{admission_plan}',
                 'selection_percentage': (
                     round((len(applicants) / admission_plan) * 100, 1)
-                    if admission_plan > 0 else 0
+                    if admission_plan > 0
+                    else 0
                 ),
             },
             'calculation': {
@@ -335,10 +333,41 @@ class CalculateView(APIView):
 
 
 class RecommendationsView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
+        program_id = request.data.get('program_id')
+        if not program_id:
+            return Response(
+                {'error': 'Необходимо указать program_id'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        program = get_object_or_404(EducationPrograms, id=program_id)
+        payload = dict(request.data)
+        payload.setdefault('admission_plan', program.admission_plan)
+        payload.setdefault('target_avg_score', program.target_avg_score)
+
+        try:
+            result = build_recommendations(payload, program=program)
+        except RecommendationValidationError as error:
+            return Response(
+                {
+                    'error': str(error),
+                    'error_code': 'INVALID_RECOMMENDATION_INPUT',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         return Response({
-            'status': 'В разработке',
-            'message': 'Модуль рекомендаций будет реализован на следующем этапе',
+            'program': {
+                'id': program.id,
+                'name': program.name,
+                'code': program.code,
+                'admission_plan': program.admission_plan,
+                'target_avg_score': program.target_avg_score,
+            },
+            **result,
         })
 
 
@@ -354,7 +383,6 @@ class ValidateSelectionView(APIView):
             )
 
         program = get_object_or_404(EducationPrograms, id=program_id)
-
         is_valid = len(applicants) <= program.admission_plan
         available_slots = max(0, program.admission_plan - len(applicants))
 
@@ -416,10 +444,8 @@ class ScenarioCalculateView(APIView):
 
             if action == 'add':
                 applicant = change.get('applicant')
-
                 if applicant and applicant.get('id'):
                     existing_ids = [item.get('id') for item in applicants]
-
                     if applicant['id'] in existing_ids:
                         applied_changes.append({
                             'action': 'add',
@@ -438,14 +464,13 @@ class ScenarioCalculateView(APIView):
 
             elif action == 'remove':
                 applicant_id = change.get('applicant_id')
-
                 if not applicant_id:
                     continue
 
                 before_count = len(applicants)
-
                 applicants = [
-                    applicant for applicant in applicants
+                    applicant
+                    for applicant in applicants
                     if applicant.get('id') != applicant_id
                 ]
 
@@ -532,7 +557,6 @@ class UserInfoView(APIView):
 
     def get(self, request):
         user = request.user
-
         return Response({
             'id': user.id,
             'username': user.username,

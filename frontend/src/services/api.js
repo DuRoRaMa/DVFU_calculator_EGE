@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
 
 export const getAccessToken = () => {
   return localStorage.getItem('accessToken');
@@ -18,11 +18,9 @@ export const saveAuthTokens = ({ access, refresh }) => {
   if (access) {
     localStorage.setItem('accessToken', access);
   }
-
   if (refresh) {
     localStorage.setItem('refreshToken', refresh);
   }
-
   window.dispatchEvent(new Event('auth:login'));
 };
 
@@ -64,18 +62,15 @@ const processQueue = (error, token = null) => {
       promise.resolve(token);
     }
   });
-
   failedQueue = [];
 };
 
 api.interceptors.request.use(
   (config) => {
     const token = getAccessToken();
-
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
     return config;
   },
   (error) => Promise.reject(error)
@@ -83,7 +78,6 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => response,
-
   async (error) => {
     const originalRequest = error.config;
 
@@ -92,7 +86,6 @@ api.interceptors.response.use(
     }
 
     const refreshToken = getRefreshToken();
-
     if (!refreshToken) {
       clearAuthTokens();
       redirectToLogin();
@@ -117,7 +110,6 @@ api.interceptors.response.use(
       const refreshResponse = await axios.post(`${API_BASE_URL}/token/refresh/`, {
         refresh: refreshToken,
       });
-
       const newAccessToken = refreshResponse.data.access;
       const newRefreshToken = refreshResponse.data.refresh;
 
@@ -127,16 +119,13 @@ api.interceptors.response.use(
       });
 
       api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
-
       processQueue(null, newAccessToken);
-
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
       return api(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
       clearAuthTokens();
       redirectToLogin();
-
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;
@@ -153,11 +142,9 @@ export const getProgram = (id) => api.get(`/programs/${id}/`);
 
 // Мониторинг
 export const getDirectionStats = () => api.get('/directions/stats/');
-
 export const getDirectionApplicants = (directionCode) => {
   return api.get(`/directions/${encodeURIComponent(directionCode)}/applicants/`);
 };
-
 export const getImportStatus = () => api.get('/import/status/');
 
 // Админ

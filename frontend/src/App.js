@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   BrowserRouter as Router,
   Navigate,
   Route,
   Routes,
   useNavigate,
+  useParams,
 } from 'react-router-dom';
 import {
   Container,
@@ -16,13 +17,13 @@ import {
 import Header from './components/Layout/Header';
 import ProgramSelector from './components/Program/ProgramSelector';
 import CalculatorPage from './pages/CalculatorPage';
+import RecommendationsPage from './pages/RecommendationsPage';
 import ScenarioPage from './pages/ScenarioPage';
 import Loader from './components/Common/Loader';
 import ErrorAlert from './components/Common/ErrorAlert';
 import Login from './components/Auth/Login';
 import AdminAnalyticsPanel from './components/Admin/AdminAnalyticsPanel';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
-
 import {
   clearAuthTokens,
   getDirectionStats,
@@ -59,14 +60,44 @@ const attachMonitoringStats = (programs, directionStats) => {
   }));
 };
 
+const ProgramRoute = ({ programs, selectedProgram, onSelectProgram, children }) => {
+  const { programId } = useParams();
+
+  const routeProgram = useMemo(() => {
+    if (selectedProgram?.id?.toString() === programId?.toString()) {
+      return selectedProgram;
+    }
+
+    return programs.find((program) => program.id?.toString() === programId?.toString()) || null;
+  }, [programId, programs, selectedProgram]);
+
+  useEffect(() => {
+    if (routeProgram && selectedProgram?.id !== routeProgram.id) {
+      onSelectProgram(routeProgram);
+    }
+  }, [routeProgram, selectedProgram, onSelectProgram]);
+
+  if (!routeProgram) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children(routeProgram);
+};
+
+const ProtectedLayout = ({ onLogout, children }) => (
+  <ProtectedRoute>
+    <Header onLogout={onLogout} />
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      {children}
+    </Container>
+  </ProtectedRoute>
+);
+
 const AppContent = () => {
   const navigate = useNavigate();
-
   const [isAuthenticated, setIsAuthenticated] = useState(hasAuthTokens());
-
   const [programs, setPrograms] = useState([]);
   const [selectedProgram, setSelectedProgram] = useState(null);
-
   const [loading, setLoading] = useState(hasAuthTokens());
   const [error, setError] = useState(null);
 
@@ -74,7 +105,6 @@ const AppContent = () => {
     const handleAuthLogin = () => {
       setIsAuthenticated(true);
     };
-
     const handleAuthLogout = () => {
       setIsAuthenticated(false);
       setPrograms([]);
@@ -110,7 +140,6 @@ const AppContent = () => {
           programsResponse.data,
           statsResponse.data
         );
-
         setPrograms(programsWithStats);
       } catch (err) {
         console.error(err);
@@ -144,7 +173,9 @@ const AppContent = () => {
           isAuthenticated ? (
             <Navigate to="/" replace />
           ) : (
-            <Login onLogin={() => setIsAuthenticated(true)} />
+            <Container maxWidth="sm" sx={{ py: 8 }}>
+              <Login setToken={() => setIsAuthenticated(true)} />
+            </Container>
           )
         }
       />
@@ -152,109 +183,91 @@ const AppContent = () => {
       <Route
         path="/"
         element={
-          <ProtectedRoute>
-            <>
-              <Header onLogout={handleLogout} />
-
-              <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-                {error && (
-                  <ErrorAlert
-                    message={error}
-                    onClose={() => setError(null)}
-                  />
-                )}
-
-                {loading ? (
-                  <Loader />
-                ) : (
-                  <>
-                    <AdminAnalyticsPanel />
-
-                    <ProgramSelector
-                      programs={programs}
-                      selectedProgram={selectedProgram}
-                      onSelectProgram={handleSelectProgram}
-                    />
-                  </>
-                )}
-              </Container>
-            </>
-          </ProtectedRoute>
+          <ProtectedLayout onLogout={handleLogout}>
+            {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
+            {loading ? (
+              <Loader message="Загрузка направлений..." />
+            ) : (
+              <ProgramSelector
+                programs={programs}
+                selectedProgram={selectedProgram}
+                onSelectProgram={handleSelectProgram}
+              />
+            )}
+          </ProtectedLayout>
         }
       />
 
       <Route
         path="/calculate/:programId"
         element={
-          <ProtectedRoute>
-            <>
-              <Header onLogout={handleLogout} />
+          <ProtectedLayout onLogout={handleLogout}>
+            {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
+            {loading ? (
+              <Loader message="Загрузка направления..." />
+            ) : (
+              <ProgramRoute
+                programs={programs}
+                selectedProgram={selectedProgram}
+                onSelectProgram={handleSelectProgram}
+              >
+                {(program) => <CalculatorPage program={program} onError={setError} />}
+              </ProgramRoute>
+            )}
+          </ProtectedLayout>
+        }
+      />
 
-              <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-                {error && (
-                  <ErrorAlert
-                    message={error}
-                    onClose={() => setError(null)}
-                  />
-                )}
-
-                {loading ? (
-                  <Loader />
-                ) : selectedProgram ? (
-                  <CalculatorPage
-                    program={selectedProgram}
-                    onError={setError}
-                  />
-                ) : (
-                  <Navigate to="/" replace />
-                )}
-              </Container>
-            </>
-          </ProtectedRoute>
+      <Route
+        path="/recommendations/:programId"
+        element={
+          <ProtectedLayout onLogout={handleLogout}>
+            {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
+            {loading ? (
+              <Loader message="Загрузка направления..." />
+            ) : (
+              <ProgramRoute
+                programs={programs}
+                selectedProgram={selectedProgram}
+                onSelectProgram={handleSelectProgram}
+              >
+                {(program) => <RecommendationsPage program={program} onError={setError} />}
+              </ProgramRoute>
+            )}
+          </ProtectedLayout>
         }
       />
 
       <Route
         path="/scenario/:programId"
         element={
-          <ProtectedRoute>
-            <>
-              <Header onLogout={handleLogout} />
-
-              <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-                {error && (
-                  <ErrorAlert
-                    message={error}
-                    onClose={() => setError(null)}
-                  />
-                )}
-
-                {loading ? (
-                  <Loader />
-                ) : selectedProgram ? (
-                  <ScenarioPage
-                    program={selectedProgram}
-                    onError={setError}
-                  />
-                ) : (
-                  <Navigate to="/" replace />
-                )}
-              </Container>
-            </>
-          </ProtectedRoute>
+          <ProtectedLayout onLogout={handleLogout}>
+            {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
+            {loading ? (
+              <Loader message="Загрузка направления..." />
+            ) : (
+              <ProgramRoute
+                programs={programs}
+                selectedProgram={selectedProgram}
+                onSelectProgram={handleSelectProgram}
+              >
+                {(program) => <ScenarioPage program={program} onError={setError} />}
+              </ProgramRoute>
+            )}
+          </ProtectedLayout>
         }
       />
 
       <Route
-        path="*"
+        path="/admin"
         element={
-          hasAuthTokens() ? (
-            <Navigate to="/" replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
+          <ProtectedLayout onLogout={handleLogout}>
+            <AdminAnalyticsPanel />
+          </ProtectedLayout>
         }
       />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
@@ -263,7 +276,6 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-
       <Router>
         <AppContent />
       </Router>

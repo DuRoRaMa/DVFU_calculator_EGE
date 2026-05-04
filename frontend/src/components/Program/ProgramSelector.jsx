@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -8,357 +8,162 @@ import {
   CardContent,
   Chip,
   Divider,
+  Grid,
   MenuItem,
-  Stack,
   TextField,
   Typography,
 } from '@mui/material';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import CalculateIcon from '@mui/icons-material/Calculate';
 
-const ProgramSelector = ({ programs, selectedProgram, onSelectProgram }) => {
+const SCHOOL_OPTIONS = [
+  'ИМКТ',
+  'ШЭМ',
+  'ШМиНЖ',
+  'ИТПМ',
+  'ИФКС',
+  'ЮШ',
+  'ШИГН',
+  'ПИШ',
+  'ШП',
+  'ВИ',
+  'ИМО',
+  'ПИ',
+];
+
+const ProgramSelector = ({ programs, onSelectProgram }) => {
   const navigate = useNavigate();
   const [school, setSchool] = useState('');
 
-  const schools = useMemo(() => {
-    return [...new Set(programs.map((program) => program.school_name))]
-      .filter(Boolean)
-      .sort();
-  }, [programs]);
-
-  const filteredPrograms = useMemo(() => {
-    return programs.filter((program) => {
-      return school === '' || program.school_name === school;
-    });
-  }, [programs, school]);
-
-  const groupedPrograms = useMemo(() => {
-    return filteredPrograms.reduce((acc, program) => {
-      const schoolName = program.school_name || 'Без школы';
-
-      if (!acc[schoolName]) {
-        acc[schoolName] = [];
-      }
-
-      acc[schoolName].push(program);
-      return acc;
-    }, {});
-  }, [filteredPrograms]);
-
-  const handleSelect = (program) => {
-    onSelectProgram(program);
-  };
-
-  const handleGoToCalculate = () => {
-    if (selectedProgram) {
-      navigate(`/calculate/${selectedProgram.id}`);
+  const goToCalculator = (program) => {
+    if (program) {
+      onSelectProgram(program);
+      navigate(`/calculate/${program.id}`);
     }
   };
 
-  const chipSx = {
-    maxWidth: '100%',
-    height: 'auto',
-    minHeight: 28,
-    py: 0.4,
-    fontSize: '0.85rem',
-    '& .MuiChip-label': {
-      display: 'block',
-      whiteSpace: 'normal',
-      overflow: 'visible',
-      textOverflow: 'unset',
-      lineHeight: 1.25,
-    },
+  const goToRecommendations = (program) => {
+    if (program) {
+      onSelectProgram(program);
+      navigate(`/recommendations/${program.id}`);
+    }
   };
 
+  const filteredPrograms = programs.filter((program) => {
+    return school === '' || program.school_name === school;
+  });
+
+  const groupedPrograms = filteredPrograms.reduce((acc, program) => {
+    const schoolName = program.school_name || 'Без школы';
+    if (!acc[schoolName]) acc[schoolName] = [];
+    acc[schoolName].push(program);
+    return acc;
+  }, {});
+
   return (
-    <Box sx={{ width: '100%', maxWidth: '100%' }}>
+    <Box>
       <Box sx={{ mb: 4 }}>
-        <Typography
-          variant="h4"
-          fontWeight={700}
-          gutterBottom
-          sx={{ fontSize: { xs: '1.65rem', md: '2.25rem' } }}
-        >
+        <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
           Выберите направление подготовки
         </Typography>
-
-        <Typography
-          color="text.secondary"
-          sx={{ fontSize: { xs: '1rem', md: '1.15rem' } }}
-        >
-          Для расчета среднего балла ЕГЭ выберите направление из списка.
+        <Typography variant="body1" color="text.secondary">
+          Для каждого направления доступны конструктор среднего балла и система рекомендаций.
         </Typography>
       </Box>
 
       <TextField
         select
+        fullWidth
         label="Выберите школу"
         value={school}
         onChange={(event) => setSchool(event.target.value)}
-        sx={{ mb: 4, width: { xs: '100%', sm: 340 } }}
-        size="medium"
+        sx={{ mb: 3, maxWidth: 420 }}
       >
         <MenuItem value="">Все школы</MenuItem>
-
-        {schools.map((schoolName) => (
-          <MenuItem key={schoolName} value={schoolName}>
-            {schoolName}
+        {SCHOOL_OPTIONS.map((item) => (
+          <MenuItem key={item} value={item}>
+            {item}
           </MenuItem>
         ))}
       </TextField>
 
       {Object.entries(groupedPrograms).map(([schoolName, schoolPrograms]) => (
-        <Box key={schoolName} sx={{ mb: 5, width: '100%' }}>
-          <Typography
-            variant="h5"
-            fontWeight={700}
-            sx={{
-              mb: 2,
-              fontSize: { xs: '1.35rem', md: '1.65rem' },
-            }}
-          >
+        <Box key={schoolName} sx={{ mb: 4 }}>
+          <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
             {schoolName}
           </Typography>
 
-          <Box
-            sx={{
-              width: '100%',
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: 'minmax(0, 1fr)',
-                sm: 'repeat(2, minmax(0, 1fr))',
-                lg: 'repeat(3, minmax(0, 1fr))',
-                xl: 'repeat(4, minmax(0, 1fr))',
-              },
-              gap: 3,
-              alignItems: 'stretch',
-            }}
-          >
-            {schoolPrograms.map((program) => {
-              const isSelected = selectedProgram?.id === program.id;
-              const monitoring = program.monitoring;
-
-              return (
+          <Grid container spacing={3} alignItems="stretch">
+            {schoolPrograms.map((program) => (
+              <Grid item xs={12} md={6} lg={4} key={program.id} sx={{ display: 'flex' }}>
                 <Card
-                  key={program.id}
                   sx={{
                     width: '100%',
-                    maxWidth: '100%',
-                    minWidth: 0,
-                    height: '100%',
-                    minHeight: 410,
+                    height: 280,
+                    minHeight: 280,
+                    maxHeight: 280,
                     display: 'flex',
                     flexDirection: 'column',
                     borderRadius: 3,
-                    border: isSelected ? '2px solid' : '1px solid',
-                    borderColor: isSelected ? 'primary.main' : 'divider',
-                    boxShadow: isSelected ? 6 : 2,
-                    transition: '0.2s',
-                    '&:hover': {
-                      boxShadow: 6,
-                      transform: 'translateY(-2px)',
-                    },
+                    boxShadow: 2,
+                    border: '1px solid transparent',
                   }}
                 >
-                  <CardContent
-                    sx={{
-                      flexGrow: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      minWidth: 0,
-                    }}
-                  >
-                    <Stack spacing={1.5} sx={{ flexGrow: 1, minWidth: 0 }}>
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="flex-start"
-                        gap={1}
-                        sx={{ minWidth: 0 }}
-                      >
-                        <Typography
-                          variant="h6"
-                          fontWeight={700}
-                          sx={{
-                            fontSize: { xs: '1.15rem', md: '1.25rem' },
-                            lineHeight: 1.25,
-                            minWidth: 0,
-                            overflowWrap: 'anywhere',
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          {program.name}
-                        </Typography>
+                  <CardContent sx={{ flexGrow: 1, overflow: 'hidden' }}>
+                    <Typography
+                      variant="h6"
+                      component="h2"
+                      fontWeight="bold"
+                      sx={{
+                        minHeight: 64,
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                      }}
+                    >
+                      {program.name}
+                    </Typography>
 
-                        {isSelected && (
-                          <CheckCircleIcon color="primary" sx={{ flexShrink: 0 }} />
-                        )}
-                      </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
+                      Шифр: {program.code}
+                    </Typography>
 
-                      <Chip
-                        label={`Шифр: ${program.code}`}
-                        size="small"
-                        sx={{
-                          ...chipSx,
-                          alignSelf: 'flex-start',
-                          flexShrink: 0,
-                        }}
-                      />
+                    <Divider sx={{ mb: 2 }} />
 
-                      <Divider />
-
-                      <Box
-                        sx={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                          gap: 1.5,
-                          minWidth: 0,
-                        }}
-                      >
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography color="text.secondary" sx={{ fontSize: '0.95rem' }}>
-                            Форма обучения
-                          </Typography>
-                          <Typography
-                            fontWeight={600}
-                            sx={{
-                              fontSize: '1.05rem',
-                              overflowWrap: 'anywhere',
-                            }}
-                          >
-                            {program.study_form}
-                          </Typography>
-                        </Box>
-
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography color="text.secondary" sx={{ fontSize: '0.95rem' }}>
-                            План приёма
-                          </Typography>
-                          <Typography fontWeight={600} sx={{ fontSize: '1.05rem' }}>
-                            {program.admission_plan} мест
-                          </Typography>
-                        </Box>
-
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography color="text.secondary" sx={{ fontSize: '0.95rem' }}>
-                            Целевой балл
-                          </Typography>
-                          <Typography fontWeight={600} sx={{ fontSize: '1.05rem' }}>
-                            {program.target_avg_score}
-                          </Typography>
-                        </Box>
-
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography color="text.secondary" sx={{ fontSize: '0.95rem' }}>
-                            Статус
-                          </Typography>
-                          <Typography
-                            fontWeight={600}
-                            sx={{
-                              fontSize: '1.05rem',
-                              overflowWrap: 'anywhere',
-                            }}
-                          >
-                            {program.status}
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      {monitoring && (
-                        <>
-                          <Divider />
-
-                          <Box sx={{ mt: 'auto', minWidth: 0 }}>
-                            <Typography
-                              color="text.secondary"
-                              sx={{
-                                mb: 1,
-                                fontSize: '0.95rem',
-                              }}
-                            >
-                              Мониторинг
-                            </Typography>
-
-                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                              <Chip
-                                color="primary"
-                                size="small"
-                                label={`Средний по плану: ${monitoring.avg_score}`}
-                                sx={chipSx}
-                              />
-
-                              <Chip
-                                size="small"
-                                label={`Абитуриентов: ${monitoring.applicants_count}`}
-                                sx={chipSx}
-                              />
-
-                              <Chip
-                                color="success"
-                                size="small"
-                                label={`Согласий: ${monitoring.approval_count}`}
-                                sx={chipSx}
-                              />
-
-                              <Chip
-                                color="secondary"
-                                size="small"
-                                label={`Высший приоритет: ${monitoring.top_priority_count}`}
-                                sx={chipSx}
-                              />
-                            </Stack>
-                          </Box>
-                        </>
-                      )}
-                    </Stack>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      <Chip label={`Форма: ${program.study_form || '-'}`} size="small" />
+                      <Chip label={`План: ${program.admission_plan} мест`} size="small" color="primary" variant="outlined" />
+                      <Chip label={`Цель: ${program.target_avg_score}`} size="small" color="secondary" variant="outlined" />
+                    </Box>
                   </CardContent>
 
-                  <CardActions sx={{ p: 2, pt: 0 }}>
+                  <CardActions sx={{ p: 2, pt: 0, display: 'flex', gap: 1, alignItems: 'stretch' }}>
                     <Button
                       fullWidth
-                      onClick={() => handleSelect(program)}
-                      variant={isSelected ? 'contained' : 'outlined'}
-                      size="large"
-                      sx={{ fontSize: '1rem' }}
+                      variant="contained"
+                      color="primary"
+                      startIcon={<CalculateIcon />}
+                      onClick={() => goToCalculator(program)}
                     >
-                      {isSelected ? 'Выбрано' : 'Выбрать'}
+                      Расчёт
+                    </Button>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="secondary"
+                      startIcon={<AutoAwesomeIcon />}
+                      onClick={() => goToRecommendations(program)}
+                    >
+                      Рекомендации
                     </Button>
                   </CardActions>
                 </Card>
-              );
-            })}
-          </Box>
+              </Grid>
+            ))}
+          </Grid>
         </Box>
       ))}
-
-      {selectedProgram && (
-        <Box
-          sx={{
-            position: 'sticky',
-            bottom: 24,
-            display: 'flex',
-            justifyContent: 'center',
-            mt: 4,
-            zIndex: 10,
-          }}
-        >
-          <Button
-            variant="contained"
-            size="large"
-            endIcon={<ArrowForwardIcon />}
-            onClick={handleGoToCalculate}
-            sx={{
-              px: 4,
-              py: 1.5,
-              borderRadius: 999,
-              boxShadow: 6,
-              fontSize: { xs: '1rem', md: '1.1rem' },
-            }}
-          >
-            Перейти к расчету
-          </Button>
-        </Box>
-      )}
     </Box>
   );
 };
