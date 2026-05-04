@@ -1,65 +1,132 @@
 import React, { useState } from 'react';
-import { Box, Button, TextField } from '@mui/material';
-import ErrorAlert from '../Common/ErrorAlert';
-import axios from 'axios';
+import {
+  Alert,
+  Box,
+  Button,
+  Container,
+  Paper,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-export default function Login({ setToken }) {
+import { loginUser, saveAuthTokens } from '../../services/api';
+
+const Login = ({ onLogin }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = location.state?.from?.pathname || '/';
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const isFormInvalid = username.trim() === '' || password.trim() === '';
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (isFormInvalid) {
+      setError('Введите логин и пароль');
+      return;
+    }
+
     try {
-      const response = await axios.post('http://localhost:8000/api/token/', {
-        username,
-        password,
+      setLoading(true);
+      setError('');
+
+      const response = await loginUser(username, password);
+
+      saveAuthTokens({
+        access: response.data.access,
+        refresh: response.data.refresh,
       });
-      const accessToken = response.data.access;
-      localStorage.setItem('accessToken', accessToken);
-      setToken(accessToken);
+
+      if (onLogin) {
+        onLogin();
+      }
+
+      navigate(from, { replace: true });
     } catch (err) {
+      console.error(err);
       setError('Неверный логин или пароль');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Box
-      sx={{
-        maxWidth: 400,
-        mx: 'auto',
-        mt: 10,
-        p: 3,
-        boxShadow: 3,
-        borderRadius: 2,
-        backgroundColor: 'white',
-      }}
-    >
-      <h2>Вход</h2>
-      {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
-      <TextField
-        label="Username"
-        fullWidth
-        margin="normal"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
-      <TextField
-        label="Password"
-        type="password"
-        fullWidth
-        margin="normal"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <Button
-        variant="contained"
-        color="primary"
-        fullWidth
-        onClick={handleLogin}
-        sx={{ mt: 2 }}
+    <Container maxWidth="sm">
+      <Box
+        minHeight="100vh"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
       >
-        Войти
-      </Button>
-    </Box>
+        <Paper
+          component="form"
+          onSubmit={handleSubmit}
+          sx={{
+            width: '100%',
+            p: 4,
+            borderRadius: 3,
+          }}
+        >
+          <Typography
+            variant="h4"
+            fontWeight={700}
+            gutterBottom
+          >
+            Вход
+          </Typography>
+
+          <Typography
+            color="text.secondary"
+            sx={{ mb: 3 }}
+          >
+            Авторизуйтесь, чтобы перейти к калькулятору.
+          </Typography>
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          <TextField
+            label="Логин"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            fullWidth
+            sx={{ mb: 2 }}
+            autoComplete="username"
+          />
+
+          <TextField
+            label="Пароль"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            fullWidth
+            sx={{ mb: 3 }}
+            autoComplete="current-password"
+          />
+
+          <Button
+            type="submit"
+            variant="contained"
+            fullWidth
+            size="large"
+            disabled={loading || isFormInvalid}
+          >
+            {loading ? 'Вход...' : 'Войти'}
+          </Button>
+        </Paper>
+      </Box>
+    </Container>
   );
-}
+};
+
+export default Login;

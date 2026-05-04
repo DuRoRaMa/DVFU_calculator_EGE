@@ -1,34 +1,83 @@
-// src/components/calculator/ApplicantsTable.jsx
 import React from 'react';
-import { Paper, Box, Typography } from '@mui/material';
+import {
+  Box,
+  Paper,
+  Typography,
+} from '@mui/material';
+
 import ApplicantCard from './ApplicantCard';
 
 const ApplicantsTable = ({
   applicants,
   selectedIds,
   onAdd,
-  admissionPlan,
-  sortField,
-  sortDirection,
-  onSortChange
 }) => {
   return (
-    <Paper elevation={3} sx={{ height: '100%' }}>
-      <Box sx={{ p: 2, bgcolor: 'primary.light', color: 'white' }}>
-        <Typography variant="h6">
+    <Paper
+      sx={{
+        p: { xs: 2, md: 2.5 },
+        borderRadius: 3,
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        height: '100%',
+        minHeight: 520,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        gap={1}
+        mb={2}
+        sx={{ minWidth: 0 }}
+      >
+        <Typography
+          variant="h5"
+          fontWeight={700}
+          sx={{
+            fontSize: { xs: '1.2rem', md: '1.45rem' },
+            overflowWrap: 'anywhere',
+          }}
+        >
           Общий список абитуриентов
         </Typography>
-        <Typography variant="caption">
+
+        <Typography
+          color="text.secondary"
+          sx={{
+            fontSize: { xs: '0.95rem', md: '1.05rem' },
+            flexShrink: 0,
+          }}
+        >
           Всего: {applicants.length} человек
         </Typography>
       </Box>
-      
-      <Box sx={{ maxHeight: 500, overflow: 'auto', p: 1 }}>
+
+      <Box
+        sx={{
+          flexGrow: 1,
+          minWidth: 0,
+          width: '100%',
+          overflowY: 'auto',
+          pr: { xs: 0, md: 1 },
+          maxHeight: { xs: 'none', lg: '70vh' },
+        }}
+      >
         {applicants.length === 0 ? (
-          <Box sx={{ p: 4, textAlign: 'center' }}>
-            <Typography variant="body1" color="text.secondary">
-              Нет абитуриентов по выбранным фильтрам
-            </Typography>
+          <Box
+            sx={{
+              py: 6,
+              textAlign: 'center',
+              color: 'text.secondary',
+              fontSize: { xs: '1rem', md: '1.1rem' },
+            }}
+          >
+            Нет абитуриентов по выбранным фильтрам
           </Box>
         ) : (
           applicants.map((applicant) => (
@@ -37,7 +86,6 @@ const ApplicantsTable = ({
               applicant={applicant}
               isSelected={selectedIds.includes(applicant.id)}
               onAdd={onAdd}
-              showAddButton={selectedIds.length < admissionPlan}
             />
           ))
         )}

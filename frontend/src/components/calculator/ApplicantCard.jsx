@@ -1,152 +1,132 @@
-// src/components/calculator/ApplicantCard.jsx
 import React from 'react';
-import { Paper, Typography, Chip, Box, IconButton } from '@mui/material';
+import {
+  Box,
+  Chip,
+  IconButton,
+  Paper,
+  Typography,
+} from '@mui/material';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 
-const ApplicantCard = ({ 
-  applicant, 
-  isSelected, 
-  onAdd, 
+const ApplicantCard = ({
+  applicant,
+  isSelected,
+  onAdd,
   showAddButton = true,
-  borderColor = 'primary.main'
+  borderColor = 'primary.main',
 }) => {
-  const avgScore = applicant.noExams ? 100 : applicant.avg_score;
-  
-  // Определяем цвет границы на основе балла
+  const avgScore = applicant.noExams ? 100 : Number(applicant.avg_score || 0);
+
   const getBorderColor = () => {
-    if (borderColor) return borderColor;
-    if (avgScore >= 90) return 'success.main';
-    if (avgScore >= 75) return 'primary.main';
+    if (borderColor) {
+      return borderColor;
+    }
+
+    if (avgScore >= 90) {
+      return 'success.main';
+    }
+
+    if (avgScore >= 75) {
+      return 'primary.main';
+    }
+
     return 'warning.main';
   };
 
-  // Определяем цвет текста балла
   const getScoreColor = () => {
-    if (avgScore >= 90) return 'success.main';
-    if (avgScore >= 75) return 'primary.main';
+    if (avgScore >= 90) {
+      return 'success.main';
+    }
+
+    if (avgScore >= 75) {
+      return 'primary.main';
+    }
+
     return 'error.main';
   };
 
   return (
     <Paper
-      elevation={1}
       sx={{
-        p: 2,
-        mb: 1,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderLeft: 4,
+        p: { xs: 1.5, md: 2 },
+        mb: 1.5,
+        borderLeft: '5px solid',
         borderColor: getBorderColor(),
-        opacity: isSelected ? 0.6 : 1,
-        '&:hover': {
-          backgroundColor: 'action.hover',
-        }
+        opacity: isSelected ? 0.55 : 1,
       }}
     >
-      <Box sx={{ flex: 1 }}>
-        <Typography variant="body1" fontWeight="medium" gutterBottom>
-          {applicant.name}
-        </Typography>
-        
-        <Box display="flex" alignItems="center" gap={1} mb={1}>
-          <Typography 
-            variant="caption" 
-            color="text.secondary" 
-            fontWeight="bold"
-            sx={{ 
-              backgroundColor: 'action.selected',
-              px: 1,
-              py: 0.5,
-              borderRadius: 1
-            }}
-          >
-            Сумма: {applicant.sumScore || '—'}
-          </Typography>
-          
-
-        </Box>
-        
-        <Box display="flex" gap={0.5} flexWrap="wrap">
-          {applicant.noExams && (
-            <Chip 
-              label="БВИ" 
-              size="small" 
-              color="success" 
-              variant="outlined"
-              sx={{ height: 20, fontSize: '0.65rem' }}
-            />
-          )}
-          {applicant.topPriority && (
-            <Chip 
-              label="Высший приоритет" 
-              size="small" 
-              color="primary" 
-              variant="outlined"
-              sx={{ height: 20, fontSize: '0.65rem' }}
-            />
-          )}
-          {applicant.hightPriorityNoOriginal && (
-            <Chip 
-              label="Без оригиналов" 
-              size="small" 
-              color="warning" 
-              variant="outlined"
-              sx={{ height: 20, fontSize: '0.65rem' }}
-            />
-          )}
-        </Box>
-      </Box>
-      
-      <Box display="flex" alignItems="center" gap={2} sx={{ ml: 2 }}>
-        <Box textAlign="right">
-          <Typography variant="body2" color="text.secondary">
-            Средний:
-          </Typography>
-          <Typography 
-            variant="h6" 
-            color={getScoreColor()}
-            sx={{ 
-              fontWeight: 'bold',
-              position: 'relative'
-            }}
-          >
-            {applicant.noExams ? '100.00' : applicant.avg_score.toFixed(2)}
-            {applicant.noExams && (
-              <Typography 
-                component="span" 
-                variant="caption" 
-                color="success.main"
-                sx={{ 
-                  position: 'absolute',
-                  top: -8,
-                  right: 0,
-                  fontWeight: 'bold'
-                }}
-              >
-                (БВИ)
-              </Typography>
-            )}
-          </Typography>
-        </Box>
-        
-        {showAddButton && (
-          <IconButton
-            color="primary"
-            size="small"
-            onClick={() => onAdd(applicant)}
-            disabled={isSelected}
+      <Box display="flex" justifyContent="space-between" gap={2}>
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Typography
+            fontWeight={700}
             sx={{
-              opacity: isSelected ? 0.5 : 1,
-              '&:hover': {
-                backgroundColor: 'primary.main',
-                color: 'white'
-              }
+              fontSize: {
+                xs: '0.95rem',
+                sm: '1rem',
+                md: '1.1rem',
+              },
+              wordBreak: 'break-word',
             }}
           >
-            <AddCircleIcon />
-          </IconButton>
-        )}
+            {applicant.name}
+          </Typography>
+
+          <Typography
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}
+          >
+            Сумма баллов: {applicant.sumScore || '—'}
+          </Typography>
+
+          <Box display="flex" gap={1} flexWrap="wrap" mt={1}>
+            {applicant.noExams && (
+              <Chip size="small" label="БВИ" color="secondary" />
+            )}
+
+            {applicant.topPriority && (
+              <Chip size="small" label="Высший приоритет" color="primary" />
+            )}
+
+            {applicant.approval && (
+              <Chip size="small" label="Согласие" color="success" />
+            )}
+          </Box>
+        </Box>
+
+        <Box textAlign="right" sx={{ minWidth: 78 }}>
+          <Typography
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.85rem', md: '0.95rem' } }}
+          >
+            Средний
+          </Typography>
+
+          <Typography
+            variant="h5"
+            fontWeight={700}
+            color={getScoreColor()}
+            sx={{ fontSize: { xs: '1.2rem', md: '1.45rem' } }}
+          >
+            {avgScore.toFixed(2)}
+          </Typography>
+
+          {showAddButton && (
+            <IconButton
+              onClick={() => onAdd(applicant)}
+              disabled={isSelected}
+              size="large"
+              sx={{
+                opacity: isSelected ? 0.5 : 1,
+                '&:hover': {
+                  backgroundColor: 'primary.main',
+                  color: 'white',
+                },
+              }}
+            >
+              <AddCircleIcon />
+            </IconButton>
+          )}
+        </Box>
       </Box>
     </Paper>
   );

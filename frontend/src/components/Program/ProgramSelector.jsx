@@ -1,21 +1,49 @@
-import React,{ useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // ← Добавить
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-  Button,
-  Chip,
   Box,
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  Chip,
   Divider,
-  CardActions
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
 } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const ProgramSelector = ({ programs, selectedProgram, onSelectProgram }) => {
-  const navigate = useNavigate(); // ← Добавить хук
+  const navigate = useNavigate();
+  const [school, setSchool] = useState('');
+
+  const schools = useMemo(() => {
+    return [...new Set(programs.map((program) => program.school_name))]
+      .filter(Boolean)
+      .sort();
+  }, [programs]);
+
+  const filteredPrograms = useMemo(() => {
+    return programs.filter((program) => {
+      return school === '' || program.school_name === school;
+    });
+  }, [programs, school]);
+
+  const groupedPrograms = useMemo(() => {
+    return filteredPrograms.reduce((acc, program) => {
+      const schoolName = program.school_name || 'Без школы';
+
+      if (!acc[schoolName]) {
+        acc[schoolName] = [];
+      }
+
+      acc[schoolName].push(program);
+      return acc;
+    }, {});
+  }, [filteredPrograms]);
 
   const handleSelect = (program) => {
     onSelectProgram(program);
@@ -27,182 +55,305 @@ const ProgramSelector = ({ programs, selectedProgram, onSelectProgram }) => {
     }
   };
 
-  
-  const [school, setSchool] = useState("");
-  
-  const handleChangeSchool = (e) => {
-    setSchool(e.target.value);
+  const chipSx = {
+    maxWidth: '100%',
+    height: 'auto',
+    minHeight: 28,
+    py: 0.4,
+    fontSize: '0.85rem',
+    '& .MuiChip-label': {
+      display: 'block',
+      whiteSpace: 'normal',
+      overflow: 'visible',
+      textOverflow: 'unset',
+      lineHeight: 1.25,
+    },
   };
 
-  const filteredPrograms = programs.filter(program => {
-    return (
-      (school === "" || program.school_name === school)
-    );
-  });
-
-  const groupedPrograms = filteredPrograms.reduce((acc, program) => {
-    if (!acc[program.school_name]) acc[program.school_name] = [];
-    acc[program.school_name].push(program);
-    return acc;
-  }, {});
-
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        Выберите направление подготовки
-      </Typography>
-      <Typography variant="body1" color="text.secondary" paragraph>
-        Для расчета среднего балла ЕГЭ выберите направление из списка
-      </Typography>
+    <Box sx={{ width: '100%', maxWidth: '100%' }}>
+      <Box sx={{ mb: 4 }}>
+        <Typography
+          variant="h4"
+          fontWeight={700}
+          gutterBottom
+          sx={{ fontSize: { xs: '1.65rem', md: '2.25rem' } }}
+        >
+          Выберите направление подготовки
+        </Typography>
 
-      <label>
-        Выберите школу:
-        <select value={school} onChange={handleChangeSchool}>
-          <option value="">----</option>
-          <option value="ИМКТ">ИМКТ</option>
-          <option value="ШЭМ">ШЭМ</option>
-          <option value="ШМиНЖ">ШМиНЖ</option>
-          <option value="ИТПМ">ИТПМ</option>
-          <option value="ИФКС">ИФКС</option>
-          <option value="ЮШ">ЮШ</option>
-          <option value="ШИГН">ШИГН</option>
-          <option value="ПИШ">ПИШ</option>
-          <option value="ШП">ШП</option>
-          <option value="ВИ">ВИ</option>
-          <option value="ИМО">ИМО</option>
-          <option value="ПИ">ПИ</option>
-        </select>
-      </label>
-      
-      {Object.entries(groupedPrograms).map(([schoolName, programs]) => (
-        <Box key={schoolName} sx={{ mt: 4 }}>
-          <Typography variant="h5" gutterBottom>
+        <Typography
+          color="text.secondary"
+          sx={{ fontSize: { xs: '1rem', md: '1.15rem' } }}
+        >
+          Для расчета среднего балла ЕГЭ выберите направление из списка.
+        </Typography>
+      </Box>
+
+      <TextField
+        select
+        label="Выберите школу"
+        value={school}
+        onChange={(event) => setSchool(event.target.value)}
+        sx={{ mb: 4, width: { xs: '100%', sm: 340 } }}
+        size="medium"
+      >
+        <MenuItem value="">Все школы</MenuItem>
+
+        {schools.map((schoolName) => (
+          <MenuItem key={schoolName} value={schoolName}>
+            {schoolName}
+          </MenuItem>
+        ))}
+      </TextField>
+
+      {Object.entries(groupedPrograms).map(([schoolName, schoolPrograms]) => (
+        <Box key={schoolName} sx={{ mb: 5, width: '100%' }}>
+          <Typography
+            variant="h5"
+            fontWeight={700}
+            sx={{
+              mb: 2,
+              fontSize: { xs: '1.35rem', md: '1.65rem' },
+            }}
+          >
             {schoolName}
           </Typography>
-          <Divider sx={{ my: 1, borderBottomWidth: 2 }} />
 
-      <Grid container spacing={3} sx={{ mt: 2 }}>
-        {programs.map((program) => (
-          <Grid item xs={12} md={12} lg={12} key={program.id}>
-            <Card 
-              variant="outlined"
-              sx={{
-                height: '100%',
-                borderColor: selectedProgram?.id === program.id ? 'primary.main' : 'divider',
-                borderWidth: selectedProgram?.id === program.id ? 2 : 1,
-                transition: 'all 0.2s',
-                width: 450
+          <Box
+            sx={{
+              width: '100%',
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: 'minmax(0, 1fr)',
+                sm: 'repeat(2, minmax(0, 1fr))',
+                lg: 'repeat(3, minmax(0, 1fr))',
+                xl: 'repeat(4, minmax(0, 1fr))',
+              },
+              gap: 3,
+              alignItems: 'stretch',
+            }}
+          >
+            {schoolPrograms.map((program) => {
+              const isSelected = selectedProgram?.id === program.id;
+              const monitoring = program.monitoring;
 
-              }}
-            >
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                  <Box>
-                    <Typography variant="h6" component="div">
-                      {program.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Шифр: {program.code}
-                    </Typography>
-                  </Box>
-                  {selectedProgram?.id === program.id && (
-                    <CheckCircleIcon color="primary" />
-                  )}
-                </Box>
-                
-                <Divider sx={{ my: 2 }} />
-                
-                <Grid container spacing={1}>
-                  <Grid item xs={6}
-                  sx={{ 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            alignItems: 'center',  // Горизонтально
-                            justifyContent: 'center'  // Вертикально
-                        }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Форма обучения
-                    </Typography>
-                    <Typography variant="body2">
-                      {program.study_form}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6}
-                  sx={{ 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            alignItems: 'center',  // Горизонтально
-                            justifyContent: 'center'  // Вертикально
-                        }}>
-                    <Typography variant="caption" color="text.secondary">
-                      План приёма
-                    </Typography>
-                    <Typography variant="body2">
-                      {program.admission_plan} мест
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6}
-                    sx={{ 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            alignItems: 'center',  // Горизонтально
-                            justifyContent: 'center'  // Вертикально
-                        }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Целевой балл
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      {program.target_avg_score}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6}
-                    sx={{ 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            alignItems: 'center',  // Горизонтально
-                            justifyContent: 'center'  // Вертикально
-                        }}>
-                    <Grid item>
-                        <Typography variant="caption" color="text.secondary">
-                            Статус
-                        </Typography>
-                    </Grid>
-                    <Grid item>
-                        <Chip 
-                            label={program.status}
-                            size="small"
-                            color={program.status === 'Активно' ? 'success' : 'default'}
-                        />
-                    </Grid>
-                    
-                  </Grid>
-                </Grid>
-              </CardContent>
-              
-              <CardActions sx={{ justifyContent: 'flex-end' }}>
-                <Button
-                  size="small"
-                  endIcon={<ArrowForwardIcon />}
-                  onClick={() => handleSelect(program)}
-                  variant={selectedProgram?.id === program.id ? "contained" : "outlined"}
+              return (
+                <Card
+                  key={program.id}
+                  sx={{
+                    width: '100%',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    height: '100%',
+                    minHeight: 410,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    borderRadius: 3,
+                    border: isSelected ? '2px solid' : '1px solid',
+                    borderColor: isSelected ? 'primary.main' : 'divider',
+                    boxShadow: isSelected ? 6 : 2,
+                    transition: '0.2s',
+                    '&:hover': {
+                      boxShadow: 6,
+                      transform: 'translateY(-2px)',
+                    },
+                  }}
                 >
-                  {selectedProgram?.id === program.id ? 'Выбрано' : 'Выбрать'}
-                </Button>
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-      </Box>
+                  <CardContent
+                    sx={{
+                      flexGrow: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      minWidth: 0,
+                    }}
+                  >
+                    <Stack spacing={1.5} sx={{ flexGrow: 1, minWidth: 0 }}>
+                      <Box
+                        display="flex"
+                        justifyContent="space-between"
+                        alignItems="flex-start"
+                        gap={1}
+                        sx={{ minWidth: 0 }}
+                      >
+                        <Typography
+                          variant="h6"
+                          fontWeight={700}
+                          sx={{
+                            fontSize: { xs: '1.15rem', md: '1.25rem' },
+                            lineHeight: 1.25,
+                            minWidth: 0,
+                            overflowWrap: 'anywhere',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {program.name}
+                        </Typography>
+
+                        {isSelected && (
+                          <CheckCircleIcon color="primary" sx={{ flexShrink: 0 }} />
+                        )}
+                      </Box>
+
+                      <Chip
+                        label={`Шифр: ${program.code}`}
+                        size="small"
+                        sx={{
+                          ...chipSx,
+                          alignSelf: 'flex-start',
+                          flexShrink: 0,
+                        }}
+                      />
+
+                      <Divider />
+
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                          gap: 1.5,
+                          minWidth: 0,
+                        }}
+                      >
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography color="text.secondary" sx={{ fontSize: '0.95rem' }}>
+                            Форма обучения
+                          </Typography>
+                          <Typography
+                            fontWeight={600}
+                            sx={{
+                              fontSize: '1.05rem',
+                              overflowWrap: 'anywhere',
+                            }}
+                          >
+                            {program.study_form}
+                          </Typography>
+                        </Box>
+
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography color="text.secondary" sx={{ fontSize: '0.95rem' }}>
+                            План приёма
+                          </Typography>
+                          <Typography fontWeight={600} sx={{ fontSize: '1.05rem' }}>
+                            {program.admission_plan} мест
+                          </Typography>
+                        </Box>
+
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography color="text.secondary" sx={{ fontSize: '0.95rem' }}>
+                            Целевой балл
+                          </Typography>
+                          <Typography fontWeight={600} sx={{ fontSize: '1.05rem' }}>
+                            {program.target_avg_score}
+                          </Typography>
+                        </Box>
+
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography color="text.secondary" sx={{ fontSize: '0.95rem' }}>
+                            Статус
+                          </Typography>
+                          <Typography
+                            fontWeight={600}
+                            sx={{
+                              fontSize: '1.05rem',
+                              overflowWrap: 'anywhere',
+                            }}
+                          >
+                            {program.status}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      {monitoring && (
+                        <>
+                          <Divider />
+
+                          <Box sx={{ mt: 'auto', minWidth: 0 }}>
+                            <Typography
+                              color="text.secondary"
+                              sx={{
+                                mb: 1,
+                                fontSize: '0.95rem',
+                              }}
+                            >
+                              Мониторинг
+                            </Typography>
+
+                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                              <Chip
+                                color="primary"
+                                size="small"
+                                label={`Средний по плану: ${monitoring.avg_score}`}
+                                sx={chipSx}
+                              />
+
+                              <Chip
+                                size="small"
+                                label={`Абитуриентов: ${monitoring.applicants_count}`}
+                                sx={chipSx}
+                              />
+
+                              <Chip
+                                color="success"
+                                size="small"
+                                label={`Согласий: ${monitoring.approval_count}`}
+                                sx={chipSx}
+                              />
+
+                              <Chip
+                                color="secondary"
+                                size="small"
+                                label={`Высший приоритет: ${monitoring.top_priority_count}`}
+                                sx={chipSx}
+                              />
+                            </Stack>
+                          </Box>
+                        </>
+                      )}
+                    </Stack>
+                  </CardContent>
+
+                  <CardActions sx={{ p: 2, pt: 0 }}>
+                    <Button
+                      fullWidth
+                      onClick={() => handleSelect(program)}
+                      variant={isSelected ? 'contained' : 'outlined'}
+                      size="large"
+                      sx={{ fontSize: '1rem' }}
+                    >
+                      {isSelected ? 'Выбрано' : 'Выбрать'}
+                    </Button>
+                  </CardActions>
+                </Card>
+              );
+            })}
+          </Box>
+        </Box>
       ))}
-      
+
       {selectedProgram && (
-        <Box sx={{ mt: 4, textAlign: 'center' }}>
+        <Box
+          sx={{
+            position: 'sticky',
+            bottom: 24,
+            display: 'flex',
+            justifyContent: 'center',
+            mt: 4,
+            zIndex: 10,
+          }}
+        >
           <Button
             variant="contained"
             size="large"
-            onClick={handleGoToCalculate}
             endIcon={<ArrowForwardIcon />}
+            onClick={handleGoToCalculate}
+            sx={{
+              px: 4,
+              py: 1.5,
+              borderRadius: 999,
+              boxShadow: 6,
+              fontSize: { xs: '1rem', md: '1.1rem' },
+            }}
           >
             Перейти к расчету
           </Button>

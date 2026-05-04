@@ -1,93 +1,72 @@
-// src/components/calculator/SelectedApplicantCard.jsx
 import React from 'react';
-import { Paper, Typography, Chip, Box, IconButton } from '@mui/material';
+import {
+  Box,
+  Chip,
+  IconButton,
+  Paper,
+  Typography,
+} from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-const SelectedApplicantCard = ({ 
-  applicant, 
-  onRemove 
-}) => {
+const SelectedApplicantCard = ({ applicant, onRemove }) => {
+  const avgScore = applicant.noExams ? 100 : Number(applicant.avg_score || 0);
+
   return (
     <Paper
-      elevation={1}
       sx={{
-        p: 2,
-        mb: 1,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        bgcolor: applicant.noExams ? 'success.light' : 'action.selected',
-        borderLeft: 4,
-        borderColor: applicant.noExams ? 'success.main' : 'primary.main',
-        '&:hover': {
-          backgroundColor: 'action.hover',
-        }
+        p: { xs: 1.5, md: 2 },
+        mb: 1.5,
+        borderLeft: '5px solid',
+        borderColor: 'success.main',
       }}
     >
-      <Box sx={{ flex: 1 }}>
-        <Typography variant="body1" fontWeight="medium" gutterBottom>
-          {applicant.name}
-        </Typography>
-        
-        <Box display="flex" alignItems="center" gap={1} mb={1}>
-          <Typography variant="caption" color="text.secondary">
-            Сумма ЕГЭ: {applicant.sumScore || '—'}
+      <Box display="flex" justifyContent="space-between" gap={2}>
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Typography
+            fontWeight={700}
+            sx={{
+              fontSize: {
+                xs: '0.95rem',
+                sm: '1rem',
+                md: '1.1rem',
+              },
+              wordBreak: 'break-word',
+            }}
+          >
+            {applicant.name}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            • Средний: {applicant.noExams ? '100.00' : applicant.avg_score.toFixed(2)}
+
+          <Typography
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}
+          >
+            Сумма баллов: {applicant.sumScore || '—'} • Средний: {avgScore.toFixed(2)}
           </Typography>
-          {applicant.noExams && (
-            <Typography 
-              variant="caption" 
-              color="success.main"
-              fontWeight="bold"
-            >
-              (БВИ)
-            </Typography>
-          )}
+
+          <Box display="flex" gap={1} flexWrap="wrap" mt={1}>
+            {applicant.noExams && (
+              <Chip size="small" label="БВИ" color="secondary" />
+            )}
+
+            {applicant.topPriority && (
+              <Chip size="small" label="Высший приоритет" color="primary" />
+            )}
+
+            {applicant.approval && (
+              <Chip size="small" label="Согласие" color="success" />
+            )}
+          </Box>
         </Box>
-        
-        <Box display="flex" gap={0.5} flexWrap="wrap">
-          {applicant.noExams && (
-            <Chip 
-              label="БВИ" 
-              size="small" 
-              color="success"
-              sx={{ height: 20, fontSize: '0.7rem' }}
-            />
-          )}
-          {applicant.topPriority && (
-            <Chip 
-              label="Высший приоритет" 
-              size="small" 
-              color="primary"
-              variant="outlined"
-              sx={{ height: 20, fontSize: '0.7rem' }}
-            />
-          )}
-          {applicant.hightPriorityNoOriginal && (
-            <Chip 
-              label="Без оригиналов" 
-              size="small" 
-              color="warning"
-              variant="outlined"
-              sx={{ height: 20, fontSize: '0.7rem' }}
-            />
-          )}
-        </Box>
-      </Box>
-      
-      <Box display="flex" alignItems="center" gap={1} sx={{ ml: 2 }}>
 
         <IconButton
-          color="error"
-          size="small"
           onClick={() => onRemove(applicant.id)}
+          size="large"
           sx={{
+            alignSelf: 'center',
             '&:hover': {
               backgroundColor: 'error.main',
-              color: 'white'
-            }
+              color: 'white',
+            },
           }}
         >
           <DeleteIcon />

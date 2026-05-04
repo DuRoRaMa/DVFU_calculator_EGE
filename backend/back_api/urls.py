@@ -1,40 +1,52 @@
-"""
-URL configuration for back_api project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path
+
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
 from api.views import (
-    ProgramListView, 
-    ProgramDetailView, 
-    CalculateView, 
+    ProgramListView,
+    ProgramDetailView,
+    CalculateView,
     RecommendationsView,
     ValidateSelectionView,
     ScenarioCalculateView,
-    ProtectedView
+    ProtectedView,
+    DirectionStatsView,
+    DirectionApplicantsView,
+    UniversityStatsView,
+    ImportStatusView,
+    RunImportView,
+    ImportSettingsView,
+    UserInfoView,
 )
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+
     path('api/programs/', ProgramListView.as_view(), name='program-list'),
     path('api/programs/<int:pk>/', ProgramDetailView.as_view(), name='program-detail'),
+
+    path('api/directions/stats/', DirectionStatsView.as_view(), name='direction-stats'),
+    path(
+        'api/directions/<str:direction_code>/applicants/',
+        DirectionApplicantsView.as_view(),
+        name='direction-applicants',
+    ),
+
+    path('api/admin/university-stats/', UniversityStatsView.as_view(), name='university-stats'),
+
+    path('api/import/status/', ImportStatusView.as_view(), name='import-status'),
+    path('api/admin/import/run/', RunImportView.as_view(), name='run-import'),
+    path('api/admin/import/settings/', ImportSettingsView.as_view(), name='import-settings'),
+
     path('api/calculate/', CalculateView.as_view(), name='calculate'),
     path('api/calculate/scenario/', ScenarioCalculateView.as_view(), name='calculate-scenario'),
     path('api/validate-selection/', ValidateSelectionView.as_view(), name='validate-selection'),
     path('api/recommendations/', RecommendationsView.as_view(), name='recommendations'),
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),  # login
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),  # refresh token
-    path('api/protected/', ProtectedView.as_view(), name='protected'), 
+
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/protected/', ProtectedView.as_view(), name='protected'),
+    path('api/me/', UserInfoView.as_view(), name='user-info'),
 ]
