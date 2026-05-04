@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BrowserRouter as Router,
   Navigate,
@@ -27,6 +27,7 @@ import ProtectedRoute from './components/Auth/ProtectedRoute';
 import {
   clearAuthTokens,
   getDirectionStats,
+  getMe,
   getPrograms,
   hasAuthTokens,
 } from './services/api';
@@ -84,9 +85,9 @@ const ProgramRoute = ({ programs, selectedProgram, onSelectProgram, children }) 
   return children(routeProgram);
 };
 
-const ProtectedLayout = ({ onLogout, children }) => (
+const ProtectedLayout = ({ currentUser, onLogout, children }) => (
   <ProtectedRoute>
-    <Header onLogout={onLogout} />
+    <Header currentUser={currentUser} onLogout={onLogout} />
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {children}
     </Container>
@@ -96,19 +97,25 @@ const ProtectedLayout = ({ onLogout, children }) => (
 const AppContent = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(hasAuthTokens());
+  const [currentUser, setCurrentUser] = useState(null);
   const [programs, setPrograms] = useState([]);
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [loading, setLoading] = useState(hasAuthTokens());
   const [error, setError] = useState(null);
+
+  const resetSessionState = useCallback(() => {
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setPrograms([]);
+    setSelectedProgram(null);
+  }, []);
 
   useEffect(() => {
     const handleAuthLogin = () => {
       setIsAuthenticated(true);
     };
     const handleAuthLogout = () => {
-      setIsAuthenticated(false);
-      setPrograms([]);
-      setSelectedProgram(null);
+      resetSessionState();
     };
 
     window.addEventListener('auth:login', handleAuthLogin);
@@ -118,7 +125,7 @@ const AppContent = () => {
       window.removeEventListener('auth:login', handleAuthLogin);
       window.removeEventListener('auth:logout', handleAuthLogout);
     };
-  }, []);
+  }, [resetSessionState]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -126,42 +133,44 @@ const AppContent = () => {
       return;
     }
 
-    const loadPrograms = async () => {
+    const loadInitialData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const [programsResponse, statsResponse] = await Promise.all([
+        const [userResponse, programsResponse, statsResponse] = await Promise.all([
+          getMe(),
           getPrograms(),
           getDirectionStats(),
         ]);
 
-        const programsWithStats = attachMonitoringStats(
-          programsResponse.data,
-          statsResponse.data
-        );
-        setPrograms(programsWithStats);
+        setCurrentUser(userResponse.data);
+        setPrograms(attachMonitoringStats(programsResponse.data, statsResponse.data));
       } catch (err) {
         console.error(err);
-        setError('Ошибка загрузки программ');
+        if (err.response?.status === 401) {
+          clearAuthTokens();
+          resetSessionState();
+          navigate('/login', { replace: true });
+          return;
+        }
+        setError('Ошибка загрузки данных');
       } finally {
         setLoading(false);
       }
     };
 
-    loadPrograms();
-  }, [isAuthenticated]);
+    loadInitialData();
+  }, [isAuthenticated, navigate, resetSessionState]);
 
-  const handleSelectProgram = (program) => {
+  const handleSelectProgram = useCallback((program) => {
     setSelectedProgram(program);
     setError(null);
-  };
+  }, []);
 
   const handleLogout = () => {
     clearAuthTokens();
-    setIsAuthenticated(false);
-    setSelectedProgram(null);
-    setPrograms([]);
+    resetSessionState();
     navigate('/login', { replace: true });
   };
 
@@ -174,7 +183,7 @@ const AppContent = () => {
             <Navigate to="/" replace />
           ) : (
             <Container maxWidth="sm" sx={{ py: 8 }}>
-              <Login setToken={() => setIsAuthenticated(true)} />
+              <Login onLogin={() => setIsAuthenticated(true)} />
             </Container>
           )
         }
@@ -183,7 +192,7 @@ const AppContent = () => {
       <Route
         path="/"
         element={
-          <ProtectedLayout onLogout={handleLogout}>
+          <ProtectedLayout currentUser={currentUser} onLogout={handleLogout}>
             {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
             {loading ? (
               <Loader message="Загрузка направлений..." />
@@ -201,7 +210,7 @@ const AppContent = () => {
       <Route
         path="/calculate/:programId"
         element={
-          <ProtectedLayout onLogout={handleLogout}>
+          <ProtectedLayout currentUser={currentUser} onLogout={handleLogout}>
             {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
             {loading ? (
               <Loader message="Загрузка направления..." />
@@ -221,7 +230,7 @@ const AppContent = () => {
       <Route
         path="/recommendations/:programId"
         element={
-          <ProtectedLayout onLogout={handleLogout}>
+          <ProtectedLayout currentUser={currentUser} onLogout={handleLogout}>
             {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
             {loading ? (
               <Loader message="Загрузка направления..." />
@@ -241,7 +250,7 @@ const AppContent = () => {
       <Route
         path="/scenario/:programId"
         element={
-          <ProtectedLayout onLogout={handleLogout}>
+          <ProtectedLayout currentUser={currentUser} onLogout={handleLogout}>
             {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
             {loading ? (
               <Loader message="Загрузка направления..." />
@@ -259,13 +268,19 @@ const AppContent = () => {
       />
 
       <Route
-        path="/admin"
+        path="/statistics"
         element={
-          <ProtectedLayout onLogout={handleLogout}>
-            <AdminAnalyticsPanel />
+          <ProtectedLayout currentUser={currentUser} onLogout={handleLogout}>
+            {loading ? (
+              <Loader message="Загрузка статистики..." />
+            ) : (
+              <AdminAnalyticsPanel />
+            )}
           </ProtectedLayout>
         }
       />
+
+      <Route path="/admin" element={<Navigate to="/statistics" replace />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

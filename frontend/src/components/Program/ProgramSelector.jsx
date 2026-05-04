@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -8,8 +8,8 @@ import {
   CardContent,
   Chip,
   Divider,
-  Grid,
   MenuItem,
+  Stack,
   TextField,
   Typography,
 } from '@mui/material';
@@ -31,34 +31,56 @@ const SCHOOL_OPTIONS = [
   'ПИ',
 ];
 
+const cardGridSx = {
+  display: 'grid',
+  gridTemplateColumns: {
+    xs: 'minmax(0, 1fr)',
+    sm: 'repeat(auto-fill, 400px)',
+  },
+  gap: 3,
+  alignItems: 'stretch',
+};
+
+const cardSx = {
+  width: {
+    xs: '100%',
+    sm: 400,
+  },
+  minWidth: 0,
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  borderRadius: 3,
+  boxShadow: 2,
+  border: '1px solid transparent',
+};
+
 const ProgramSelector = ({ programs, onSelectProgram }) => {
   const navigate = useNavigate();
   const [school, setSchool] = useState('');
 
   const goToCalculator = (program) => {
-    if (program) {
-      onSelectProgram(program);
-      navigate(`/calculate/${program.id}`);
-    }
+    onSelectProgram(program);
+    navigate(`/calculate/${program.id}`);
   };
 
   const goToRecommendations = (program) => {
-    if (program) {
-      onSelectProgram(program);
-      navigate(`/recommendations/${program.id}`);
-    }
+    onSelectProgram(program);
+    navigate(`/recommendations/${program.id}`);
   };
 
-  const filteredPrograms = programs.filter((program) => {
-    return school === '' || program.school_name === school;
-  });
+  const filteredPrograms = useMemo(() => {
+    return programs.filter((program) => school === '' || program.school_name === school);
+  }, [programs, school]);
 
-  const groupedPrograms = filteredPrograms.reduce((acc, program) => {
-    const schoolName = program.school_name || 'Без школы';
-    if (!acc[schoolName]) acc[schoolName] = [];
-    acc[schoolName].push(program);
-    return acc;
-  }, {});
+  const groupedPrograms = useMemo(() => {
+    return filteredPrograms.reduce((acc, program) => {
+      const schoolName = program.school_name || 'Без школы';
+      if (!acc[schoolName]) acc[schoolName] = [];
+      acc[schoolName].push(program);
+      return acc;
+    }, {});
+  }, [filteredPrograms]);
 
   return (
     <Box>
@@ -93,75 +115,72 @@ const ProgramSelector = ({ programs, onSelectProgram }) => {
             {schoolName}
           </Typography>
 
-          <Grid container spacing={3} alignItems="stretch">
+          <Box sx={cardGridSx}>
             {schoolPrograms.map((program) => (
-              <Grid item xs={12} md={6} lg={4} key={program.id} sx={{ display: 'flex' }}>
-                <Card
-                  sx={{
-                    width: '100%',
-                    height: 280,
-                    minHeight: 280,
-                    maxHeight: 280,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    borderRadius: 3,
-                    boxShadow: 2,
-                    border: '1px solid transparent',
-                  }}
-                >
-                  <CardContent sx={{ flexGrow: 1, overflow: 'hidden' }}>
-                    <Typography
-                      variant="h6"
-                      component="h2"
-                      fontWeight="bold"
-                      sx={{
-                        minHeight: 64,
-                        overflow: 'hidden',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: 'vertical',
-                      }}
-                    >
-                      {program.name}
-                    </Typography>
+              <Card key={program.id} sx={cardSx}>
+                <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                  <Typography
+                    variant="h6"
+                    component="h2"
+                    fontWeight="bold"
+                    sx={{
+                      overflowWrap: 'anywhere',
+                      wordBreak: 'normal',
+                      hyphens: 'auto',
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    {program.name}
+                  </Typography>
 
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
-                      Шифр: {program.code}
-                    </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1.25, mb: 2 }}>
+                    Шифр: {program.code || '—'}
+                  </Typography>
 
-                    <Divider sx={{ mb: 2 }} />
+                  <Divider sx={{ mb: 2 }} />
 
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                      <Chip label={`Форма: ${program.study_form || '-'}`} size="small" />
-                      <Chip label={`План: ${program.admission_plan} мест`} size="small" color="primary" variant="outlined" />
-                      <Chip label={`Цель: ${program.target_avg_score}`} size="small" color="secondary" variant="outlined" />
-                    </Box>
-                  </CardContent>
-
-                  <CardActions sx={{ p: 2, pt: 0, display: 'flex', gap: 1, alignItems: 'stretch' }}>
-                    <Button
-                      fullWidth
-                      variant="contained"
+                  <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1} sx={{ mt: 'auto' }}>
+                    <Chip label={`Форма: ${program.study_form || '—'}`} size="small" />
+                    <Chip
+                      label={`План: ${program.admission_plan ?? '—'} мест`}
+                      size="small"
                       color="primary"
-                      startIcon={<CalculateIcon />}
-                      onClick={() => goToCalculator(program)}
-                    >
-                      Расчёт
-                    </Button>
-                    <Button
-                      fullWidth
-                      variant="contained"
+                      variant="outlined"
+                    />
+                    <Chip
+                      label={`Цель: ${program.target_avg_score ?? '—'}`}
+                      size="small"
                       color="secondary"
-                      startIcon={<AutoAwesomeIcon />}
-                      onClick={() => goToRecommendations(program)}
-                    >
-                      Рекомендации
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
+                      variant="outlined"
+                    />
+                  </Stack>
+                </CardContent>
+
+                <CardActions sx={{ p: 2, pt: 0, display: 'flex', gap: 1.25 }}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    startIcon={<CalculateIcon />}
+                    onClick={() => goToCalculator(program)}
+                    sx={{ whiteSpace: 'nowrap', minWidth: 0 }}
+                  >
+                    Расчёт
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<AutoAwesomeIcon />}
+                    onClick={() => goToRecommendations(program)}
+                    sx={{ whiteSpace: 'nowrap', minWidth: 0 }}
+                  >
+                    Рекомендации
+                  </Button>
+                </CardActions>
+              </Card>
             ))}
-          </Grid>
+          </Box>
         </Box>
       ))}
     </Box>
