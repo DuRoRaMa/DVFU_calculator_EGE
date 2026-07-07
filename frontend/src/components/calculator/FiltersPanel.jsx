@@ -63,9 +63,32 @@ const FiltersPanel = ({
   const isRangeInvalid = !isMinInvalid && !isMaxInvalid && minNumber > maxNumber;
 
   const handleFilterToggle = (filterName) => {
-    onFilterChange({
+    const nextFilters = {
       ...filters,
       [filterName]: !filters[filterName],
+    };
+
+    // Эти два фильтра взаимоисключающие.
+    if (filterName === 'withApproval' && !filters.withApproval) {
+      nextFilters.withoutApproval = false;
+    }
+
+    if (filterName === 'withoutApproval' && !filters.withoutApproval) {
+      nextFilters.withApproval = false;
+    }
+
+    onFilterChange(nextFilters);
+  };
+
+  const resetFilters = () => {
+    onFilterChange({
+      bvi: false,
+      highPriority: false,
+      noOriginals: false,
+      withApproval: false,
+      withoutApproval: false,
+      minScore: 0,
+      maxScore: 100,
     });
   };
 
@@ -120,167 +143,212 @@ const FiltersPanel = ({
     });
   };
 
+  const sortButtonLabel = (field, label) => {
+    if (sortField !== field) {
+      return label;
+    }
+
+    return `${label} ${sortDirection === 'desc' ? '↓' : '↑'}`;
+  };
+
   return (
     <Paper
+      elevation={0}
       sx={{
-        p: { xs: 2, md: 3 },
-        mb: 3,
+        p: { xs: 1.75, sm: 2.25 },
+        mb: 2,
         borderRadius: 3,
+        border: '1px solid #e5e7eb',
+        backgroundColor: '#ffffff',
       }}
     >
-      <Stack spacing={2}>
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems={{ xs: 'flex-start', md: 'center' }}
-          flexDirection={{ xs: 'column', md: 'row' }}
-          gap={1}
-        >
-          <Box display="flex" alignItems="center" gap={1}>
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', md: 'center' }}
+        spacing={1.5}
+        sx={{ mb: 2 }}
+      >
+        <Box>
+          <Stack direction="row" spacing={1} alignItems="center">
             <FilterListIcon color="primary" />
-
-            <Typography
-              variant="h5"
-              fontWeight={700}
-              sx={{ fontSize: { xs: '1.2rem', md: '1.45rem' } }}
-            >
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
               Фильтры
             </Typography>
-          </Box>
+          </Stack>
 
-          <Typography
-            color="text.secondary"
-            sx={{ fontSize: { xs: '0.95rem', md: '1.05rem' } }}
-          >
+          <Typography variant="body2" color="text.secondary">
             Показано: {filteredCount} из {totalApplicants}
           </Typography>
         </Box>
 
-        <Alert severity="info" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
+        <Button
+          variant="text"
+          onClick={resetFilters}
+          size="small"
+          sx={{ alignSelf: { xs: 'stretch', md: 'center' } }}
+        >
+          Сбросить фильтры
+        </Button>
+      </Stack>
+
+      {(isMinInvalid || isMaxInvalid || isRangeInvalid) && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
           В фильтре используется средний балл абитуриента. Значения должны быть в диапазоне от 0 до 100.
         </Alert>
+      )}
 
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
-            <Stack spacing={0.5}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={Boolean(filters.bvi)}
-                    onChange={() => handleFilterToggle('bvi')}
-                    size="medium"
-                  />
-                }
-                label={
-                  <Typography sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}>
-                    Только БВИ
-                  </Typography>
-                }
-              />
+      <Grid container spacing={1.5} alignItems="stretch">
+        <Grid item xs={12} md={5}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: '1fr 1fr',
+              },
+              gap: 1,
+            }}
+          >
+            <TextField
+              label="Мин. средний балл"
+              value={minScoreInput}
+              onChange={handleMinScoreChange}
+              onBlur={handleScoreBlur}
+              error={isMinInvalid || isRangeInvalid}
+              fullWidth
+              size="small"
+            />
 
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={Boolean(filters.highPriority)}
-                    onChange={() => handleFilterToggle('highPriority')}
-                    size="medium"
-                  />
-                }
-                label={
-                  <Typography sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}>
-                    Высший приоритет
-                  </Typography>
-                }
-              />
-            </Stack>
-          </Grid>
-
-          <Grid item xs={12} md={8}>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={1.5}
-              alignItems="flex-start"
-            >
-              <TextField
-                label="Средний балл от"
-                type="number"
-                value={minScoreInput}
-                onChange={handleMinScoreChange}
-                onBlur={handleScoreBlur}
-                error={isMinInvalid || isRangeInvalid}
-                helperText={
-                  isMinInvalid
-                    ? 'Введите число от 0 до 100'
-                    : isRangeInvalid
-                      ? 'Минимальный балл не должен быть больше максимального'
-                      : 'От 0 до 100'
-                }
-                inputProps={{
-                  min: 0,
-                  max: 100,
-                  step: 0.01,
-                }}
-                fullWidth
-              />
-
-              <TextField
-                label="Средний балл до"
-                type="number"
-                value={maxScoreInput}
-                onChange={handleMaxScoreChange}
-                onBlur={handleScoreBlur}
-                error={isMaxInvalid || isRangeInvalid}
-                helperText={
-                  isMaxInvalid
-                    ? 'Введите число от 0 до 100'
-                    : isRangeInvalid
-                      ? 'Максимальный балл не должен быть меньше минимального'
-                      : 'От 0 до 100'
-                }
-                inputProps={{
-                  min: 0,
-                  max: 100,
-                  step: 0.01,
-                }}
-                fullWidth
-              />
-            </Stack>
-          </Grid>
+            <TextField
+              label="Макс. средний балл"
+              value={maxScoreInput}
+              onChange={handleMaxScoreChange}
+              onBlur={handleScoreBlur}
+              error={isMaxInvalid || isRangeInvalid}
+              fullWidth
+              size="small"
+            />
+          </Box>
         </Grid>
 
+        <Grid item xs={12} md={7}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: '1fr 1fr',
+                lg: 'repeat(5, minmax(0, 1fr))',
+              },
+              gap: 0.5,
+              '& .MuiFormControlLabel-root': {
+                m: 0,
+                px: 1,
+                py: 0.6,
+                borderRadius: 2,
+                border: '1px solid #eef2f7',
+                backgroundColor: '#f8fafc',
+              },
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={Boolean(filters.bvi)}
+                  onChange={() => handleFilterToggle('bvi')}
+                  size="small"
+                />
+              }
+              label={<Typography variant="body2">БВИ</Typography>}
+            />
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={Boolean(filters.highPriority)}
+                  onChange={() => handleFilterToggle('highPriority')}
+                  size="small"
+                />
+              }
+              label={<Typography variant="body2">Высший приоритет</Typography>}
+            />
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={Boolean(filters.withApproval)}
+                  onChange={() => handleFilterToggle('withApproval')}
+                  size="small"
+                />
+              }
+              label={<Typography variant="body2">С согласием</Typography>}
+            />
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={Boolean(filters.withoutApproval)}
+                  onChange={() => handleFilterToggle('withoutApproval')}
+                  size="small"
+                />
+              }
+              label={<Typography variant="body2">Без согласия</Typography>}
+            />
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={Boolean(filters.noOriginals)}
+                  onChange={() => handleFilterToggle('noOriginals')}
+                  size="small"
+                />
+              }
+              label={<Typography variant="body2">ВПР без оригинала</Typography>}
+            />
+          </Box>
+        </Grid>
+      </Grid>
+
+      <Box sx={{ mt: 2 }}>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <SortIcon color="primary" />
+          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+            Сортировка
+          </Typography>
+        </Stack>
+
         <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={1.5}
-          alignItems={{ xs: 'stretch', md: 'center' }}
+          direction="row"
+          spacing={1}
+          useFlexGap
+          flexWrap="wrap"
         >
           <Button
-            startIcon={<SortIcon />}
             variant={sortField === 'avg_score' ? 'contained' : 'outlined'}
             onClick={() => onSortChange('avg_score')}
-            size="large"
+            size="small"
           >
-            По среднему баллу{' '}
-            {sortField === 'avg_score' && (sortDirection === 'desc' ? '↓' : '↑')}
+            {sortButtonLabel('avg_score', 'По среднему')}
           </Button>
 
           <Button
             variant={sortField === 'sumScore' ? 'contained' : 'outlined'}
             onClick={() => onSortChange('sumScore')}
-            size="large"
+            size="small"
           >
-            По сумме баллов{' '}
-            {sortField === 'sumScore' && (sortDirection === 'desc' ? '↓' : '↑')}
+            {sortButtonLabel('sumScore', 'По сумме')}
           </Button>
 
           <Button
             variant={sortField === 'name' ? 'contained' : 'outlined'}
             onClick={() => onSortChange('name')}
-            size="large"
+            size="small"
           >
-            По имени {sortField === 'name' && (sortDirection === 'desc' ? '↓' : '↑')}
+            {sortButtonLabel('name', 'По имени')}
           </Button>
         </Stack>
-      </Stack>
+      </Box>
     </Paper>
   );
 };

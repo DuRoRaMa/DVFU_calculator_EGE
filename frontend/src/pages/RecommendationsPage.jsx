@@ -110,20 +110,18 @@ const RecommendationsPage = ({ program, onError }) => {
       setLocalError(null);
       setResult(null);
 
-      const response = await getRecommendations(program.id, {
-        admission_plan: Number(admissionPlan),
-        target_avg_score: Number(targetAvgScore),
-        score_type: 'median',
-        categories: categories.map((category) => ({
-          id: category.id,
-          name: category.name,
-          median: Number(category.median),
-          locked_count: Number(category.locked_count || 0),
-        })),
-        max_results: 20,
-      });
+    const response = await getRecommendations(program.id, {
+      direction_code: program.code,
+      application_ids: [],
+    });
 
+    if (response.data?.enabled === false) {
+      setLocalError(response.data.message || 'Режим рекомендаций временно отключён.');
       setResult(response.data);
+      return;
+    }
+
+    setResult(response.data);
     } catch (err) {
       const message = err?.response?.data?.error || 'Не удалось получить рекомендации';
       setLocalError(message);

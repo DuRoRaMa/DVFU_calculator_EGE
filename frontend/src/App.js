@@ -1,4 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   BrowserRouter as Router,
   Navigate,
@@ -24,15 +29,57 @@ import ErrorAlert from './components/Common/ErrorAlert';
 import Login from './components/Auth/Login';
 import AdminAnalyticsPanel from './components/Admin/AdminAnalyticsPanel';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+
 import {
   clearAuthTokens,
   getDirectionStats,
   getMe,
   getPrograms,
   hasAuthTokens,
+  isAdminUser,
+  saveCurrentUser,
 } from './services/api';
 
 const theme = createTheme({
+  typography: {
+    fontFamily: "'Tilda Sans', Arial, sans-serif",
+    h1: {
+      fontFamily: "'Unbounded', 'Tilda Sans', Arial, sans-serif",
+      fontWeight: 800,
+      letterSpacing: '-0.04em',
+    },
+    h2: {
+      fontFamily: "'Unbounded', 'Tilda Sans', Arial, sans-serif",
+      fontWeight: 800,
+      letterSpacing: '-0.04em',
+    },
+    h3: {
+      fontFamily: "'Unbounded', 'Tilda Sans', Arial, sans-serif",
+      fontWeight: 800,
+      letterSpacing: '-0.04em',
+    },
+    h4: {
+      fontFamily: "'Unbounded', 'Tilda Sans', Arial, sans-serif",
+      fontWeight: 800,
+      letterSpacing: '-0.04em',
+    },
+    h5: {
+      fontFamily: "'Unbounded', 'Tilda Sans', Arial, sans-serif",
+      fontWeight: 800,
+      letterSpacing: '-0.035em',
+    },
+    h6: {
+      fontFamily: "'Unbounded', 'Tilda Sans', Arial, sans-serif",
+      fontWeight: 700,
+      letterSpacing: '-0.03em',
+    },
+    button: {
+      fontFamily: "'Tilda Sans', Arial, sans-serif",
+      fontWeight: 700,
+      textTransform: 'none',
+    },
+  },
+
   palette: {
     primary: {
       main: '#003366',
@@ -61,7 +108,12 @@ const attachMonitoringStats = (programs, directionStats) => {
   }));
 };
 
-const ProgramRoute = ({ programs, selectedProgram, onSelectProgram, children }) => {
+const ProgramRoute = ({
+  programs,
+  selectedProgram,
+  onSelectProgram,
+  children,
+}) => {
   const { programId } = useParams();
 
   const routeProgram = useMemo(() => {
@@ -69,7 +121,10 @@ const ProgramRoute = ({ programs, selectedProgram, onSelectProgram, children }) 
       return selectedProgram;
     }
 
-    return programs.find((program) => program.id?.toString() === programId?.toString()) || null;
+    return (
+      programs.find((program) => program.id?.toString() === programId?.toString()) ||
+      null
+    );
   }, [programId, programs, selectedProgram]);
 
   useEffect(() => {
@@ -85,17 +140,23 @@ const ProgramRoute = ({ programs, selectedProgram, onSelectProgram, children }) 
   return children(routeProgram);
 };
 
-const ProtectedLayout = ({ currentUser, onLogout, children }) => (
-  <ProtectedRoute>
+const ProtectedLayout = ({
+  currentUser,
+  onLogout,
+  children,
+}) => (
+  <>
     <Header currentUser={currentUser} onLogout={onLogout} />
+
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {children}
     </Container>
-  </ProtectedRoute>
+  </>
 );
 
 const AppContent = () => {
   const navigate = useNavigate();
+
   const [isAuthenticated, setIsAuthenticated] = useState(hasAuthTokens());
   const [currentUser, setCurrentUser] = useState(null);
   const [programs, setPrograms] = useState([]);
@@ -114,6 +175,7 @@ const AppContent = () => {
     const handleAuthLogin = () => {
       setIsAuthenticated(true);
     };
+
     const handleAuthLogout = () => {
       resetSessionState();
     };
@@ -138,22 +200,41 @@ const AppContent = () => {
         setLoading(true);
         setError(null);
 
-        const [userResponse, programsResponse, statsResponse] = await Promise.all([
-          getMe(),
-          getPrograms(),
-          getDirectionStats(),
-        ]);
+        const userResponse = await getMe();
+        const user = userResponse.data;
 
-        setCurrentUser(userResponse.data);
-        setPrograms(attachMonitoringStats(programsResponse.data, statsResponse.data));
+        setCurrentUser(user);
+        saveCurrentUser(user);
+
+        const programsResponse = await getPrograms();
+
+        let directionStats = [];
+
+        if (isAdminUser(user)) {
+          try {
+            const statsResponse = await getDirectionStats();
+            directionStats = statsResponse.data;
+          } catch (statsError) {
+            console.error(statsError);
+            directionStats = [];
+          }
+        }
+
+        setPrograms(
+          attachMonitoringStats(programsResponse.data, directionStats)
+        );
       } catch (err) {
         console.error(err);
+
         if (err.response?.status === 401) {
           clearAuthTokens();
           resetSessionState();
-          navigate('/login', { replace: true });
+          navigate('/login', {
+            replace: true,
+          });
           return;
         }
+
         setError('Ошибка загрузки данных');
       } finally {
         setLoading(false);
@@ -171,7 +252,39 @@ const AppContent = () => {
   const handleLogout = () => {
     clearAuthTokens();
     resetSessionState();
-    navigate('/login', { replace: true });
+
+    navigate('/login', {
+      replace: true,
+    });
+  };
+
+  const handleLogin = (user) => {
+    if (user) {
+      setCurrentUser(user);
+    }
+
+    setIsAuthenticated(true);
+  };
+
+  const renderProtectedContent = (content, requireAdmin = false) => {
+    return (
+      <ProtectedRoute
+        currentUser={currentUser}
+        requireAdmin={requireAdmin}
+      >
+        <ProtectedLayout currentUser={currentUser} onLogout={handleLogout}>
+          {error && (
+            <ErrorAlert message={error} onClose={() => setError(null)} />
+          )}
+
+          {loading ? (
+            <Loader />
+          ) : (
+            content
+          )}
+        </ProtectedLayout>
+      </ProtectedRoute>
+    );
   };
 
   return (
@@ -182,107 +295,89 @@ const AppContent = () => {
           isAuthenticated ? (
             <Navigate to="/" replace />
           ) : (
-            <Container maxWidth="sm" sx={{ py: 8 }}>
-              <Login onLogin={() => setIsAuthenticated(true)} />
-            </Container>
+            <Login onLogin={handleLogin} />
           )
         }
       />
 
       <Route
         path="/"
-        element={
-          <ProtectedLayout currentUser={currentUser} onLogout={handleLogout}>
-            {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
-            {loading ? (
-              <Loader message="Загрузка направлений..." />
-            ) : (
-              <ProgramSelector
-                programs={programs}
-                selectedProgram={selectedProgram}
-                onSelectProgram={handleSelectProgram}
-              />
-            )}
-          </ProtectedLayout>
-        }
+        element={renderProtectedContent(
+          <ProgramSelector
+            programs={programs}
+            onSelectProgram={handleSelectProgram}
+          />
+        )}
       />
 
       <Route
         path="/calculate/:programId"
-        element={
-          <ProtectedLayout currentUser={currentUser} onLogout={handleLogout}>
-            {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
-            {loading ? (
-              <Loader message="Загрузка направления..." />
-            ) : (
-              <ProgramRoute
-                programs={programs}
-                selectedProgram={selectedProgram}
-                onSelectProgram={handleSelectProgram}
-              >
-                {(program) => <CalculatorPage program={program} onError={setError} />}
-              </ProgramRoute>
+        element={renderProtectedContent(
+          <ProgramRoute
+            programs={programs}
+            selectedProgram={selectedProgram}
+            onSelectProgram={handleSelectProgram}
+          >
+            {(program) => (
+              <CalculatorPage
+                program={program}
+                onError={setError}
+              />
             )}
-          </ProtectedLayout>
-        }
-      />
-
-      <Route
-        path="/recommendations/:programId"
-        element={
-          <ProtectedLayout currentUser={currentUser} onLogout={handleLogout}>
-            {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
-            {loading ? (
-              <Loader message="Загрузка направления..." />
-            ) : (
-              <ProgramRoute
-                programs={programs}
-                selectedProgram={selectedProgram}
-                onSelectProgram={handleSelectProgram}
-              >
-                {(program) => <RecommendationsPage program={program} onError={setError} />}
-              </ProgramRoute>
-            )}
-          </ProtectedLayout>
-        }
+          </ProgramRoute>
+        )}
       />
 
       <Route
         path="/scenario/:programId"
-        element={
-          <ProtectedLayout currentUser={currentUser} onLogout={handleLogout}>
-            {error && <ErrorAlert error={error} onClose={() => setError(null)} />}
-            {loading ? (
-              <Loader message="Загрузка направления..." />
-            ) : (
-              <ProgramRoute
-                programs={programs}
-                selectedProgram={selectedProgram}
-                onSelectProgram={handleSelectProgram}
-              >
-                {(program) => <ScenarioPage program={program} onError={setError} />}
-              </ProgramRoute>
+        element={renderProtectedContent(
+          <ProgramRoute
+            programs={programs}
+            selectedProgram={selectedProgram}
+            onSelectProgram={handleSelectProgram}
+          >
+            {(program) => (
+              <ScenarioPage program={program} />
             )}
-          </ProtectedLayout>
-        }
+          </ProgramRoute>
+        )}
+      />
+
+      <Route
+        path="/recommendations/:programId"
+        element={renderProtectedContent(
+          <ProgramRoute
+            programs={programs}
+            selectedProgram={selectedProgram}
+            onSelectProgram={handleSelectProgram}
+          >
+            {(program) => (
+              <RecommendationsPage
+                program={program}
+                onError={setError}
+              />
+            )}
+          </ProgramRoute>
+        )}
       />
 
       <Route
         path="/statistics"
-        element={
-          <ProtectedLayout currentUser={currentUser} onLogout={handleLogout}>
-            {loading ? (
-              <Loader message="Загрузка статистики..." />
-            ) : (
-              <AdminAnalyticsPanel />
-            )}
-          </ProtectedLayout>
-        }
+        element={renderProtectedContent(
+          <AdminAnalyticsPanel />,
+          true
+        )}
       />
 
-      <Route path="/admin" element={<Navigate to="/statistics" replace />} />
+      <Route
+        path="/admin"
+        element={<Navigate to="/statistics" replace />}
+      />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route
+        path="*"
+        element={<Navigate to="/" replace />}
+      />
     </Routes>
   );
 };
@@ -291,6 +386,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+
       <Router>
         <AppContent />
       </Router>

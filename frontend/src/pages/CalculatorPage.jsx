@@ -36,6 +36,7 @@ import { getDirectionApplicants } from '../services/api';
 const mapApplicantFromApi = (applicant) => {
   return {
     id: applicant.student_id,
+    studentId: applicant.student_id,
     name: applicant.student_name,
     avg_score: Number(applicant.avg_score || 0),
     sumScore: Number(applicant.sum_score || 0),
@@ -67,6 +68,8 @@ const CalculatorPage = ({ program, onError }) => {
     bvi: false,
     highPriority: false,
     noOriginals: false,
+    withApproval: false,
+    withoutApproval: false,
     minScore: 0,
     maxScore: 100,
   });

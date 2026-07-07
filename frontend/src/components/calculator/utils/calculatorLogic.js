@@ -21,6 +21,14 @@ export const filterApplicants = (applicants, filters) => {
       return false;
     }
 
+    if (filters.withApproval && !applicant.approval) {
+      return false;
+    }
+
+    if (filters.withoutApproval && applicant.approval) {
+      return false;
+    }
+
     const avgScore = getApplicantAverageScore(applicant);
 
     if (!Number.isNaN(minScore) && avgScore < minScore) {

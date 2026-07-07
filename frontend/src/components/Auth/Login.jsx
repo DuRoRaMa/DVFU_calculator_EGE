@@ -16,7 +16,10 @@ const Login = ({ onLogin }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/';
+  const searchParams = new URLSearchParams(location.search);
+  const nextFromQuery = searchParams.get('next');
+
+  const from = nextFromQuery || location.state?.from?.pathname || '/';
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -42,13 +45,16 @@ const Login = ({ onLogin }) => {
       saveAuthTokens({
         access: response.data.access,
         refresh: response.data.refresh,
+        user: response.data.user,
       });
 
       if (onLogin) {
-        onLogin();
+        onLogin(response.data.user);
       }
 
-      navigate(from, { replace: true });
+      navigate(from, {
+        replace: true,
+      });
     } catch (err) {
       console.error(err);
       setError('Неверный логин или пароль');
@@ -58,39 +64,19 @@ const Login = ({ onLogin }) => {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box
-        minHeight="100vh"
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-      >
-        <Paper
-          component="form"
-          onSubmit={handleSubmit}
-          sx={{
-            width: '100%',
-            p: 4,
-            borderRadius: 3,
-          }}
-        >
-          <Typography
-            variant="h4"
-            fontWeight={700}
-            gutterBottom
-          >
+    <Container maxWidth="sm" sx={{ py: 8 }}>
+      <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
+        <Box component="form" onSubmit={handleSubmit}>
+          <Typography variant="h4" component="h1" gutterBottom>
             Вход
           </Typography>
 
-          <Typography
-            color="text.secondary"
-            sx={{ mb: 3 }}
-          >
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
             Авторизуйтесь, чтобы перейти к калькулятору.
           </Typography>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 3 }}>
               {error}
             </Alert>
           )}
@@ -123,8 +109,8 @@ const Login = ({ onLogin }) => {
           >
             {loading ? 'Вход...' : 'Войти'}
           </Button>
-        </Paper>
-      </Box>
+        </Box>
+      </Paper>
     </Container>
   );
 };

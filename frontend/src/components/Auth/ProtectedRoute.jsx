@@ -1,10 +1,20 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
-import { hasAuthTokens } from '../../services/api';
+import {
+  getCurrentUserFromStorage,
+  hasAuthTokens,
+  isAdminUser,
+} from '../../services/api';
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({
+  children,
+  currentUser = null,
+  requireAdmin = false,
+}) => {
   const location = useLocation();
+
+  const user = currentUser || getCurrentUserFromStorage();
 
   if (!hasAuthTokens()) {
     return (
@@ -12,6 +22,15 @@ const ProtectedRoute = ({ children }) => {
         to="/login"
         replace
         state={{ from: location }}
+      />
+    );
+  }
+
+  if (requireAdmin && !isAdminUser(user)) {
+    return (
+      <Navigate
+        to="/"
+        replace
       />
     );
   }

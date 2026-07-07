@@ -1,0 +1,171 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ege_postgres_db_local
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    environment:
+      POSTGRES_DB: ${DB_NAME:-pgdb}
+      POSTGRES_USER: ${DB_USER:-secret_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-very_secret_password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - ege_postgres_data_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-secret_user} -d ${DB_NAME:-pgdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: ege_redis_local
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - ege_redis_data_local:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ege_backend_local
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_import_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ege_celery_import_worker_local
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    command: >
+      celery -A back_api worker
+      --loglevel=info
+      --queues=imports
+      --concurrency=1
+      --hostname=imports@%h
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
+  celery_scheduler_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ege_celery_scheduler_worker_local
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    command: >
+      celery -A back_api worker
+      --loglevel=info
+      --queues=scheduler
+      --concurrency=1
+      --hostname=scheduler@%h
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ege_celery_beat_local
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    command: celery -A back_api beat --loglevel=info
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
+  frontend:
+    image: node:22-alpine
+    container_name: ege_frontend_local
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      REACT_APP_API_BASE_URL: http://localhost:8000/api
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    command: >
+      sh -c "npm install &&
+             npm start"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - ege_frontend_node_modules_local:/app/node_modules
+    depends_on:
+      backend:
+        condition: service_started
+    stdin_open: true
+    tty: true
+
+volumes:
+  ege_postgres_data_local:
+  ege_redis_data_local:
+  ege_frontend_node_modules_local:
