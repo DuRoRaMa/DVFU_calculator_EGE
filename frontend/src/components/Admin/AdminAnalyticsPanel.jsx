@@ -22,7 +22,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-
+import PriorityDirectionsStats from './PriorityDirectionsStats';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
@@ -640,6 +640,7 @@ const AdminAnalyticsPanel = () => {
       </Box>
       <Box sx={{ mb: 3 }}>
         <UniversityVppAverageDynamics />
+        <PriorityDirectionsStats />
       </Box>
       <Box
         sx={{

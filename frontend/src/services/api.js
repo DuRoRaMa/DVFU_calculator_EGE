@@ -24,6 +24,10 @@ export const getCurrentUserFromStorage = () => {
   }
 };
 
+export const getPriorityDirectionStats = () => {
+  return api.get('/admin/priority-direction-stats/');
+};
+
 export const hasAuthTokens = () => {
   return Boolean(getAccessToken() || getRefreshToken());
 };
