@@ -111,7 +111,7 @@ class ApplicantApplication(models.Model):
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['student_id', 'direction_code'],
+                fields=['student_id', 'direction_code', 'direction_name'],
                 name='unique_applicant_application_by_direction',
             )
         ]

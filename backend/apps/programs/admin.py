@@ -4,6 +4,7 @@ from .models import (
     EducationProgram,
     ProgramSubjectRequirement,
     Subject,
+    PriorityTarget
 )
 
 
@@ -87,6 +88,55 @@ class EducationProgramAdmin(admin.ModelAdmin):
         'name',
     )
 
+@admin.register(PriorityTarget)
+class PriorityTargetAdmin(admin.ModelAdmin):
+    list_display = [
+        'target_type',
+        'ugsn_code',
+        'ugsn_name',
+        'target_avg_score',
+        'is_active',
+        'updated_at',
+    ]
+
+    list_filter = [
+        'target_type',
+        'is_active',
+    ]
+
+    list_editable = [
+        'target_avg_score',
+        'is_active',
+    ]
+
+    search_fields = [
+        'ugsn_code',
+        'ugsn_name',
+        'comment',
+    ]
+
+    fieldsets = (
+        (
+            'Основное',
+            {
+                'fields': (
+                    'target_type',
+                    'ugsn_code',
+                    'ugsn_name',
+                    'target_avg_score',
+                    'is_active',
+                )
+            },
+        ),
+        (
+            'Комментарий',
+            {
+                'fields': (
+                    'comment',
+                )
+            },
+        ),
+    )
 
 @admin.register(ProgramSubjectRequirement)
 class ProgramSubjectRequirementAdmin(admin.ModelAdmin):
