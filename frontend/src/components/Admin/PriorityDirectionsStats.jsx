@@ -17,9 +17,10 @@ import {
 
 import StarIcon from '@mui/icons-material/Star';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import FlagIcon from '@mui/icons-material/Flag';
+import DifferenceIcon from '@mui/icons-material/Difference';
+import SchoolIcon from '@mui/icons-material/School';
 import GroupsIcon from '@mui/icons-material/Groups';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import FactCheckIcon from '@mui/icons-material/FactCheck';
 
 import { getPriorityDirectionStats } from '../../services/api';
 
@@ -37,6 +38,70 @@ const numberOrDash = (value) => {
   }
 
   return value;
+};
+
+const getStatusLabel = (status) => {
+  if (status === 'success') {
+    return 'Цель достигнута';
+  }
+
+  if (status === 'warning') {
+    return 'Близко к цели';
+  }
+
+  if (status === 'danger') {
+    return 'Ниже цели';
+  }
+
+  return 'Цель не задана';
+};
+
+const getStatusChipColor = (status) => {
+  if (status === 'success') {
+    return 'success';
+  }
+
+  if (status === 'warning') {
+    return 'warning';
+  }
+
+  if (status === 'danger') {
+    return 'error';
+  }
+
+  return 'default';
+};
+
+const getDeltaText = (delta) => {
+  if (delta === null || delta === undefined || Number.isNaN(Number(delta))) {
+    return '—';
+  }
+
+  const numberValue = Number(delta);
+
+  if (numberValue > 0) {
+    return `+${numberValue.toFixed(2)}`;
+  }
+
+  return numberValue.toFixed(2);
+};
+
+const getDeltaColor = (delta) => {
+  if (delta === null || delta === undefined || Number.isNaN(Number(delta))) {
+    return 'text.secondary';
+  }
+
+  const numberValue = Number(delta);
+
+  if (numberValue >= 0) {
+    return 'success.main';
+  }
+
+  if (numberValue >= -1) {
+    return 'warning.main';
+  }
+
+  return 'error.main';
 };
 
 const StatCard = ({
@@ -112,6 +177,7 @@ const StatCard = ({
               mt: 0.35,
               fontWeight: 900,
               lineHeight: 1.15,
+              wordBreak: 'break-word',
             }}
           >
             {value}
@@ -162,7 +228,7 @@ const PriorityDirectionsStats = () => {
           return;
         }
 
-        setErrorText('Не удалось загрузить статистику по приоритетным направлениям.');
+        setErrorText('Не удалось загрузить статистику по Приоритету 2030.');
         console.error(error);
       })
       .finally(() => {
@@ -195,8 +261,9 @@ const PriorityDirectionsStats = () => {
       >
         <Stack direction="row" spacing={1.5} alignItems="center">
           <CircularProgress size={20} />
+
           <Typography variant="body2" color="text.secondary">
-            Загружаем статистику по приоритетным направлениям...
+            Загружаем статистику по Приоритету 2030...
           </Typography>
         </Stack>
       </Paper>
@@ -216,7 +283,10 @@ const PriorityDirectionsStats = () => {
   }
 
   const aggregate = stats.aggregate || {};
+  const ugsnGroups = Array.isArray(stats.ugsn_groups) ? stats.ugsn_groups : [];
   const directions = Array.isArray(stats.directions) ? stats.directions : [];
+
+  const hasPriorityDirections = directions.length > 0;
 
   return (
     <Paper
@@ -237,7 +307,7 @@ const PriorityDirectionsStats = () => {
         sx={{ mb: 2 }}
       >
         <Box>
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
             <StarIcon sx={{ color: '#1d4ed8' }} />
 
             <Typography variant="h6" sx={{ fontWeight: 900 }}>
@@ -246,22 +316,39 @@ const PriorityDirectionsStats = () => {
 
             <Chip
               size="small"
-              label={`${numberOrDash(aggregate.directions_count)} направлений`}
+              label={getStatusLabel(aggregate.status)}
+              color={getStatusChipColor(aggregate.status)}
+              sx={{ fontWeight: 700 }}
+            />
+
+            <Chip
+              size="small"
+              label={`${numberOrDash(aggregate.directions_count)} НПС`}
               sx={{
                 fontWeight: 700,
                 backgroundColor: '#dbeafe',
                 color: '#1e40af',
               }}
             />
+
+            <Chip
+              size="small"
+              label={`${numberOrDash(aggregate.ugsn_count)} УГСН`}
+              sx={{
+                fontWeight: 700,
+                backgroundColor: '#e0e7ff',
+                color: '#3730a3',
+              }}
+            />
           </Stack>
 
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Отдельная статистика по направлениям с галочкой «Приоритет 2030».
+            Статистика по направлениям с галочкой «Приоритет 2030»: факт среднего балла, целевые показатели и отклонение.
           </Typography>
         </Box>
       </Stack>
 
-      {directions.length === 0 ? (
+      {!hasPriorityDirections ? (
         <Alert severity="info">
           Пока нет направлений с включённой галочкой «Приоритет 2030».
           Включи её у нужных направлений в Django admin.
@@ -272,42 +359,145 @@ const PriorityDirectionsStats = () => {
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
                 icon={<TrendingUpIcon />}
-                label="Средний по плану"
-                value={formatScore(aggregate.average_score_by_plan)}
-                caption="Сумма ВПП / общий план"
-                tone="warning"
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <StatCard
-                icon={<FactCheckIcon />}
-                label="Средний по ВПП"
-                value={formatScore(aggregate.average_score_by_vpp_count)}
-                caption="Качество найденных ВПП"
+                label="Факт среднего балла"
+                value={formatScore(aggregate.actual_avg_score)}
+                caption="Средний по ВПП по всем приоритетным НПС"
                 tone="success"
               />
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
-                icon={<GroupsIcon />}
-                label="ВПП в плане"
-                value={`${numberOrDash(aggregate.plan_applications_count)}/${numberOrDash(aggregate.total_admission_plan)}`}
-                caption={`Заполнено ${formatScore(aggregate.plan_fill_percent)}%`}
+                icon={<FlagIcon />}
+                label="Целевой показатель"
+                value={formatScore(aggregate.target_avg_score)}
+                caption="Настраивается в целевых показателях"
+                tone="warning"
               />
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
-                icon={<WarningAmberIcon />}
-                label="Не хватает ВПП"
-                value={numberOrDash(aggregate.plan_missing_count)}
-                caption={`Всего заявлений: ${numberOrDash(aggregate.total_applications)}`}
-                tone={aggregate.plan_missing_count > 0 ? 'warning' : 'success'}
+                icon={<DifferenceIcon />}
+                label="Отклонение"
+                value={getDeltaText(aggregate.delta)}
+                caption="Факт минус цель"
+                tone={
+                  aggregate.status === 'success'
+                    ? 'success'
+                    : aggregate.status === 'warning'
+                      ? 'warning'
+                      : aggregate.status === 'danger'
+                        ? 'danger'
+                        : 'default'
+                }
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                icon={<GroupsIcon />}
+                label="ВПП"
+                value={numberOrDash(aggregate.vpp_count)}
+                caption="Количество ВПП в расчёте"
               />
             </Grid>
           </Grid>
+
+          <Typography
+            variant="subtitle1"
+            sx={{
+              mt: 2,
+              mb: 1,
+              fontWeight: 900,
+            }}
+          >
+            Группировка по УГСН
+          </Typography>
+
+          <Box
+            sx={{
+              overflowX: 'auto',
+              borderRadius: 2,
+              border: '1px solid #e5e7eb',
+              backgroundColor: '#ffffff',
+              mb: 3,
+            }}
+          >
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>УГСН</TableCell>
+                  <TableCell>Название</TableCell>
+                  <TableCell align="right">Факт</TableCell>
+                  <TableCell align="right">Цель</TableCell>
+                  <TableCell align="right">Отклонение</TableCell>
+                  <TableCell align="right">НПС</TableCell>
+                  <TableCell align="right">ВПП</TableCell>
+                  <TableCell align="right">Статус</TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {ugsnGroups.map((row) => (
+                  <TableRow key={row.ugsn_code}>
+                    <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 800 }}>
+                      {row.ugsn_code}
+                    </TableCell>
+
+                    <TableCell sx={{ minWidth: 260 }}>
+                      {row.ugsn_name}
+                    </TableCell>
+
+                    <TableCell align="right" sx={{ fontWeight: 800 }}>
+                      {formatScore(row.actual_avg_score)}
+                    </TableCell>
+
+                    <TableCell align="right">
+                      {formatScore(row.target_avg_score)}
+                    </TableCell>
+
+                    <TableCell
+                      align="right"
+                      sx={{
+                        fontWeight: 800,
+                        color: getDeltaColor(row.delta),
+                      }}
+                    >
+                      {getDeltaText(row.delta)}
+                    </TableCell>
+
+                    <TableCell align="right">
+                      {numberOrDash(row.directions_count)}
+                    </TableCell>
+
+                    <TableCell align="right">
+                      {numberOrDash(row.vpp_count)}
+                    </TableCell>
+
+                    <TableCell align="right">
+                      <Chip
+                        size="small"
+                        label={getStatusLabel(row.status)}
+                        color={getStatusChipColor(row.status)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+
+          <Typography
+            variant="subtitle1"
+            sx={{
+              mt: 2,
+              mb: 1,
+              fontWeight: 900,
+            }}
+          >
+            Детализация по НПС
+          </Typography>
 
           <Box
             sx={{
@@ -320,61 +510,71 @@ const PriorityDirectionsStats = () => {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Код</TableCell>
+                  <TableCell>Код НПС</TableCell>
                   <TableCell>Направление</TableCell>
-                  <TableCell align="right">План</TableCell>
-                  <TableCell align="right">ВПП в плане</TableCell>
-                  <TableCell align="right">Не хватает</TableCell>
-                  <TableCell align="right">Средний по плану</TableCell>
-                  <TableCell align="right">Средний по ВПП</TableCell>
-                  <TableCell align="right">Заявлений</TableCell>
-                  <TableCell align="right">Согласий</TableCell>
+                  <TableCell>УГСН</TableCell>
+                  <TableCell align="right">Факт</TableCell>
+                  <TableCell align="right">Цель НПС</TableCell>
+                  <TableCell align="right">Отклонение</TableCell>
+                  <TableCell align="right">ВПП</TableCell>
+                  <TableCell align="right">Статус</TableCell>
                 </TableRow>
               </TableHead>
 
               <TableBody>
                 {directions.map((row) => (
-                  <TableRow key={row.direction_code}>
-                    <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}>
+                  <TableRow key={`${row.direction_code}-${row.direction_name}`}>
+                    <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 800 }}>
                       {row.direction_code}
                     </TableCell>
 
-                    <TableCell sx={{ minWidth: 260 }}>
+                    <TableCell sx={{ minWidth: 280 }}>
                       {row.direction_name}
                     </TableCell>
 
-                    <TableCell align="right">
-                      {numberOrDash(row.admission_plan)}
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      {row.ugsn_code}
+                    </TableCell>
+
+                    <TableCell align="right" sx={{ fontWeight: 800 }}>
+                      {formatScore(row.actual_avg_score)}
                     </TableCell>
 
                     <TableCell align="right">
-                      {numberOrDash(row.plan_applications_count)}
+                      {formatScore(row.target_avg_score)}
+                    </TableCell>
+
+                    <TableCell
+                      align="right"
+                      sx={{
+                        fontWeight: 800,
+                        color: getDeltaColor(row.delta),
+                      }}
+                    >
+                      {getDeltaText(row.delta)}
                     </TableCell>
 
                     <TableCell align="right">
-                      {numberOrDash(row.plan_missing_count)}
+                      {numberOrDash(row.vpp_count)}
                     </TableCell>
 
                     <TableCell align="right">
-                      {formatScore(row.average_score_by_plan)}
-                    </TableCell>
-
-                    <TableCell align="right">
-                      {formatScore(row.average_score_by_vpp_count)}
-                    </TableCell>
-
-                    <TableCell align="right">
-                      {numberOrDash(row.total_applications)}
-                    </TableCell>
-
-                    <TableCell align="right">
-                      {numberOrDash(row.approvals_count)}
+                      <Chip
+                        size="small"
+                        label={getStatusLabel(row.status)}
+                        color={getStatusChipColor(row.status)}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </Box>
+
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Цель по НПС берётся из поля «Целевой средний балл» у направления.
+            Цель по УГСН и общая цель Приоритета 2030 настраиваются отдельно в Django admin.
+          </Alert>
         </>
       )}
     </Paper>

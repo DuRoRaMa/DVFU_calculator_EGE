@@ -640,8 +640,8 @@ const AdminAnalyticsPanel = () => {
       </Box>
       <Box sx={{ mb: 3 }}>
         <UniversityVppAverageDynamics />
-        <PriorityDirectionsStats />
       </Box>
+      <PriorityDirectionsStats />
       <Box
         sx={{
           display: 'grid',
