@@ -36,3 +36,55 @@
     transform: rotate(360deg);
   }
 }
+@font-face {
+  font-family: 'Tilda Sans';
+  src: url('../public/fonts/TildaSans.woff2') format('woff2');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-main: 'Tilda Sans', Arial, sans-serif;
+  --font-accent: 'Unbounded', 'Tilda Sans', Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-main);
+  background: #f5f7fb;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: var(--font-main);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.MuiTypography-h1,
+.MuiTypography-h2,
+.MuiTypography-h3,
+.MuiTypography-h4,
+.MuiTypography-h5,
+.MuiTypography-h6 {
+  font-family: var(--font-accent);
+  letter-spacing: -0.03em;
+}
+
+.metric-number,
+.program-card-number {
+  font-family: var(--font-accent);
+}
