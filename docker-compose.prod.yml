@@ -151,7 +151,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
     container_name: ege_frontend_prod
     restart: unless-stopped
     networks:
