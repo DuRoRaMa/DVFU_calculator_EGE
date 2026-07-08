@@ -16,6 +16,7 @@ from .selectors import (
     get_direction_applications,
     get_direction_stats,
     get_university_stats,
+    get_priority_direction_stats,
 )
 
 
@@ -34,6 +35,17 @@ class DirectionStatsView(APIView):
 
         return Response(serializer.data)
 
+class PriorityDirectionStatsView(APIView):
+    """
+    Статистика по направлениям с галочкой 'Приоритет 2030'.
+
+    GET /api/admin/priority-direction-stats/
+    """
+
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request):
+        return Response(get_priority_direction_stats())
 
 class DirectionApplicantsView(APIView):
     """

@@ -51,6 +51,8 @@ class EducationProgramAdmin(admin.ModelAdmin):
         'target_avg_score',
         'status',
         'updated_at',
+        'is_priority_2030',
+        'is_op_admission',
     )
 
     list_filter = (
@@ -58,7 +60,13 @@ class EducationProgramAdmin(admin.ModelAdmin):
         'education_level',
         'study_form',
         'status',
+        'is_priority_2030',
+        'is_op_admission',
     )
+    list_editable = [
+        'is_priority_2030',
+        'is_op_admission',
+    ]
 
     search_fields = (
         'code',

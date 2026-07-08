@@ -123,7 +123,17 @@ class EducationProgram(models.Model):
         default=Status.ACTIVE,
         db_index=True,
     )
+    is_priority_2030 = models.BooleanField(
+        'Приоритет 2030',
+        default=False,
+        help_text='Если включено, направление попадёт в отдельную статистику по приоритетным направлениям.',
+    )
 
+    is_op_admission = models.BooleanField(
+        'Приём на ОП',
+        default=False,
+        help_text='Если включено, заявления по этому коду не будут схлопываться только по коду направления. Уникальность будет считаться по связке: абитуриент + код + название ОП.',
+    )
     subjects = models.ManyToManyField(
         Subject,
         through='ProgramSubjectRequirement',
@@ -139,6 +149,7 @@ class EducationProgram(models.Model):
         'Дата обновления',
         auto_now=True,
     )
+
 
     class Meta:
         verbose_name = 'Образовательная программа'

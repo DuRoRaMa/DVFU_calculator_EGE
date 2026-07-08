@@ -6,6 +6,7 @@ from .views import (
     UniversityStatsView,
     AdminDirectionVppAverageDynamicsView,
     AdminUniversityVppAverageDynamicsView,
+    PriorityDirectionStatsView
 )
 
 
@@ -36,5 +37,10 @@ urlpatterns = [
         'admin/vpp-average-dynamics/directions/<str:direction_code>/',
         AdminDirectionVppAverageDynamicsView.as_view(),
         name='admin-direction-vpp-average-dynamics',
+    ),
+    path(
+        'admin/priority-direction-stats/',
+        PriorityDirectionStatsView.as_view(),
+        name='admin-priority-direction-stats',
     ),
 ]

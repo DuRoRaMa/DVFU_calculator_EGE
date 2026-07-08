@@ -4,11 +4,100 @@ from apps.core.utils import round_float
 from apps.programs.models import EducationProgram
 
 from .models import ApplicantApplication
-
+from apps.programs.services.program_flags import (
+    get_program_flags_by_code,
+    is_priority_2030_direction,
+)
 
 def get_applications_queryset():
     return ApplicantApplication.objects.filter(actual=True)
 
+def get_priority_direction_stats():
+    """
+    Статистика только по направлениям с галочкой 'Приоритет 2030'.
+    """
+
+    program_flags_by_code = get_program_flags_by_code()
+    all_rows = get_direction_stats()
+
+    priority_rows = [
+        row
+        for row in all_rows
+        if is_priority_2030_direction(
+            row.get('direction_code'),
+            program_flags_by_code,
+        )
+    ]
+
+    total_admission_plan = sum(
+        row.get('admission_plan') or 0
+        for row in priority_rows
+    )
+
+    total_applications = sum(
+        row.get('total_applications') or 0
+        for row in priority_rows
+    )
+
+    approvals_count = sum(
+        row.get('approvals_count') or 0
+        for row in priority_rows
+    )
+
+    top_priority_count = sum(
+        row.get('top_priority_count') or 0
+        for row in priority_rows
+    )
+
+    plan_applications_count = sum(
+        row.get('plan_applications_count') or 0
+        for row in priority_rows
+    )
+
+    plan_missing_count = sum(
+        row.get('plan_missing_count') or 0
+        for row in priority_rows
+    )
+
+    plan_score_sum = sum(
+        row.get('plan_score_sum') or 0
+        for row in priority_rows
+    )
+
+    average_score_by_plan = (
+        round(plan_score_sum / total_admission_plan, 2)
+        if total_admission_plan > 0
+        else 0
+    )
+
+    average_score_by_vpp_count = (
+        round(plan_score_sum / plan_applications_count, 2)
+        if plan_applications_count > 0
+        else 0
+    )
+
+    plan_fill_percent = (
+        round(plan_applications_count / total_admission_plan * 100, 2)
+        if total_admission_plan > 0
+        else 0
+    )
+
+    return {
+        'aggregate': {
+            'directions_count': len(priority_rows),
+            'total_admission_plan': total_admission_plan,
+            'total_applications': total_applications,
+            'approvals_count': approvals_count,
+            'top_priority_count': top_priority_count,
+            'plan_applications_count': plan_applications_count,
+            'plan_missing_count': plan_missing_count,
+            'plan_score_sum': round(plan_score_sum, 2),
+            'average_score_by_plan': average_score_by_plan,
+            'average_score_by_vpp_count': average_score_by_vpp_count,
+            'plan_fill_percent': plan_fill_percent,
+        },
+        'directions': priority_rows,
+    }
 
 def get_direction_applications(direction_code: str):
     return (
