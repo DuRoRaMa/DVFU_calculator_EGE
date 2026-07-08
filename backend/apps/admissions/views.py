@@ -1,12 +1,16 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 from apps.accounts.permissions import IsAdminUserRole
-
+from rest_framework.permissions import IsAuthenticated
 from .serializers import (
     ApplicantApplicationSerializer,
     DirectionStatsSerializer,
     UniversityStatsSerializer,
+)
+from apps.admissions.serializers import VppAverageScoreSnapshotSerializer
+from apps.admissions.services.vpp_dynamics import (
+    get_direction_vpp_average_dynamics,
+    get_university_vpp_average_dynamics,
 )
 from .selectors import (
     get_direction_applications,
@@ -38,7 +42,7 @@ class DirectionApplicantsView(APIView):
     GET /api/directions/<direction_code>/applicants/
     """
 
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, direction_code):
         applications = get_direction_applications(direction_code)
@@ -61,3 +65,36 @@ class UniversityStatsView(APIView):
         serializer = UniversityStatsSerializer(stats)
 
         return Response(serializer.data)
+
+class AdminUniversityVppAverageDynamicsView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request):
+        limit = int(request.query_params.get('limit', 30))
+
+        rows = get_university_vpp_average_dynamics(limit=limit)
+        serializer = VppAverageScoreSnapshotSerializer(rows, many=True)
+
+        return Response({
+            'scope': 'university',
+            'results': serializer.data,
+        })
+
+
+class AdminDirectionVppAverageDynamicsView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request, direction_code: str):
+        limit = int(request.query_params.get('limit', 30))
+
+        rows = get_direction_vpp_average_dynamics(
+            direction_code=direction_code,
+            limit=limit,
+        )
+        serializer = VppAverageScoreSnapshotSerializer(rows, many=True)
+
+        return Response({
+            'scope': 'direction',
+            'direction_code': direction_code,
+            'results': serializer.data,
+        })

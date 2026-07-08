@@ -1,18 +1,35 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: ege_postgres_db_prod
+    container_name: ege_postgres_prod
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.prod
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME:-ege_calc_db}
+      POSTGRES_USER: ${DB_USER:-ege_calc_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
+      - ege_postgres_data_prod:/var/lib/postgresql/data
+    networks:
+      - ege_internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ege_calc_user} -d ${DB_NAME:-ege_calc_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: ege_redis_prod
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - ege_redis_data_prod:/data
+    networks:
+      - ege_internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -24,36 +41,109 @@ services:
     container_name: ege_backend_prod
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.prod
     environment:
       DB_HOST: db
       DB_PORT: 5432
-      DJANGO_DEBUG: 0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
-             gunicorn back_api.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"
+             gunicorn back_api.wsgi:application
+             --bind 0.0.0.0:8000
+             --workers 3
+             --timeout 120"
     volumes:
-      - static_volume:/app/staticfiles
+      - ege_static_prod:/app/staticfiles
+      - ege_media_prod:/app/media
+    networks:
+      - ege_internal
+      - pk_proxy
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  import_scheduler:
+  celery_import_worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: ege_import_scheduler_prod
+    container_name: ege_celery_import_worker_prod
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.prod
     environment:
       DB_HOST: db
       DB_PORT: 5432
-      DJANGO_DEBUG: 0
-    command: python manage.py run_import_scheduler
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    command: >
+      celery -A back_api worker
+      --loglevel=info
+      --queues=imports
+      --concurrency=1
+      --hostname=imports@%h
+    networks:
+      - ege_internal
     depends_on:
       db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
+  celery_scheduler_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ege_celery_scheduler_worker_prod
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    command: >
+      celery -A back_api worker
+      --loglevel=info
+      --queues=scheduler
+      --concurrency=1
+      --hostname=scheduler@%h
+    networks:
+      - ege_internal
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ege_celery_beat_prod
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    command: celery -A back_api beat --loglevel=info
+    networks:
+      - ege_internal
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       backend:
         condition: service_started
@@ -62,15 +152,23 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
-      args:
-        REACT_APP_API_BASE_URL: /api
     container_name: ege_frontend_prod
     restart: unless-stopped
-    ports:
-      - "80:80"
+    networks:
+      - pk_proxy
     depends_on:
-      - backend
+      backend:
+        condition: service_started
 
 volumes:
-  postgres_data_prod:
-  static_volume:
+  ege_postgres_data_prod:
+  ege_redis_data_prod:
+  ege_static_prod:
+  ege_media_prod:
+
+networks:
+  ege_internal:
+    driver: bridge
+
+  pk_proxy:
+    external: true

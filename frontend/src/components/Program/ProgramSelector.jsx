@@ -20,6 +20,8 @@ import SchoolIcon from '@mui/icons-material/School';
 import GroupsIcon from '@mui/icons-material/Groups';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const SCHOOL_OPTIONS = [
   'ИМКТ',
@@ -57,7 +59,32 @@ const getMonitoringValue = (program, newKey, oldKey) => {
 
   return null;
 };
+const getVppPlanStatus = (program) => {
+  const admissionPlan = Number(program.admission_plan || 0);
 
+  const planApplicationsCount = Number(
+    getMonitoringValue(program, 'plan_applications_count', 'plan_applications_count') || 0
+  );
+
+  const planMissingCount = Number(
+    getMonitoringValue(program, 'plan_missing_count', 'plan_missing_count') ||
+      Math.max(admissionPlan - planApplicationsCount, 0)
+  );
+
+  const planFillPercent = Number(
+    getMonitoringValue(program, 'plan_fill_percent', 'plan_fill_percent') || 0
+  );
+
+  const isClosed = admissionPlan > 0 && planMissingCount === 0;
+
+  return {
+    admissionPlan,
+    planApplicationsCount,
+    planMissingCount,
+    planFillPercent,
+    isClosed,
+  };
+};
 const ProgramSelector = ({
   programs,
   onSelectProgram,
@@ -224,6 +251,26 @@ const ProgramSelector = ({
               const monitoringApplicants = getMonitoringValue(program, 'total_applications', 'applicants_count');
               const monitoringApprovals = getMonitoringValue(program, 'approvals_count', 'approval_count');
 
+              const averageScoreByPlan = getMonitoringValue(
+                program,
+                'average_score_by_plan',
+                'average_score'
+              );
+
+              const averageScoreByVppCount = getMonitoringValue(
+                program,
+                'average_score_by_vpp_count',
+                'average_score_by_vpp_count'
+              );
+
+              const {
+                admissionPlan,
+                planApplicationsCount,
+                planMissingCount,
+                planFillPercent,
+                isClosed,
+              } = getVppPlanStatus(program);
+
               return (
                 <Card
                   key={program.id}
@@ -387,7 +434,7 @@ const ProgramSelector = ({
                           </Typography>
 
                           <Tooltip
-                            title="Средний балл в этом блоке считается только по заявлениям с ВПП / высшим приоритетом. Общее количество заявлений и согласий показывается справочно."
+                            title="По плану — сумма баллов ВПП в пределах плана, делённая на план набора. По ВПП — та же сумма, но делённая только на количество найденных ВПП. Первый показатель показывает закрытие плана, второй — фактическое качество ВПП."
                             arrow
                           >
                             <InfoOutlinedIcon
@@ -400,11 +447,105 @@ const ProgramSelector = ({
                           </Tooltip>
                         </Stack>
 
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          Средний ВПП: {monitoringAvgScore ?? '—'} · Заявлений: {monitoringApplicants ?? '—'} · Согласий: {monitoringApprovals ?? '—'}
-                        </Typography>
+                        <Box sx={{ mt: 0.75 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                            По плану: {averageScoreByPlan !== null && averageScoreByPlan !== undefined
+                              ? Number(averageScoreByPlan).toFixed(2)
+                              : '—'}
+                          </Typography>
+
+                          <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                            По ВПП: {averageScoreByVppCount !== null && averageScoreByVppCount !== undefined
+                              ? Number(averageScoreByVppCount).toFixed(2)
+                              : '—'}
+                          </Typography>
+
+                          <Typography variant="caption" color="text.secondary">
+                            Заявлений: {monitoringApplicants ?? '—'} · Согласий: {monitoringApprovals ?? '—'}
+                          </Typography>
+                        </Box>
                       </Box>
                     )}
+                    {program.monitoring && admissionPlan > 0 && (
+                    <Box
+                      sx={{
+                        mt: 1.5,
+                        p: 1.25,
+                        borderRadius: 2.5,
+                        backgroundColor: isClosed ? '#ecfdf3' : '#fffbeb',
+                        border: '1px solid',
+                        borderColor: isClosed ? '#bbf7d0' : '#fde68a',
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="flex-start"
+                      >
+                        <Box
+                          sx={{
+                            mt: 0.15,
+                            color: isClosed ? '#15803d' : '#b45309',
+                            display: 'flex',
+                          }}
+                        >
+                          {isClosed ? (
+                            <CheckCircleIcon fontSize="small" />
+                          ) : (
+                            <WarningAmberIcon fontSize="small" />
+                          )}
+                        </Box>
+
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Stack
+                            direction="row"
+                            spacing={0.75}
+                            alignItems="center"
+                            flexWrap="wrap"
+                            useFlexGap
+                          >
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: 900,
+                                color: isClosed ? '#166534' : '#92400e',
+                              }}
+                            >
+                              {isClosed
+                                ? 'Общий конкурс закрыт ВПП'
+                                : `Не хватает ВПП: ${planMissingCount}`}
+                            </Typography>
+
+                            <Tooltip
+                              title="Проверка показывает, хватает ли заявлений с ВПП / высшим приоритетом для закрытия плана набора по общему конкурсу. Если ВПП меньше плана, недостающие места снижают средний балл по направлению."
+                              arrow
+                            >
+                              <InfoOutlinedIcon
+                                sx={{
+                                  fontSize: 16,
+                                  color: isClosed ? '#166534' : '#92400e',
+                                  cursor: 'help',
+                                }}
+                              />
+                            </Tooltip>
+                          </Stack>
+
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              display: 'block',
+                              mt: 0.5,
+                              color: isClosed ? '#166534' : '#92400e',
+                            }}
+                          >
+                            ВПП в плане: {planApplicationsCount} из {admissionPlan}
+                            {' '}
+                            · заполнено {planFillPercent}%
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </Box>
+                  )}
                   </CardContent>
 
                   <CardActions

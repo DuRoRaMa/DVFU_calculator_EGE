@@ -387,7 +387,7 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
 
-      <Router>
+      <Router basename="/ege_calc">
         <AppContent />
       </Router>
     </ThemeProvider>

@@ -118,3 +118,113 @@ class ApplicantApplication(models.Model):
 
     def __str__(self):
         return f'{self.student_id} — {self.direction_code} — {self.avg_score}'
+
+class VppAverageScoreSnapshot(models.Model):
+    class Scope(models.TextChoices):
+        UNIVERSITY = 'university', 'Университет'
+        DIRECTION = 'direction', 'Направление'
+
+    import_log = models.ForeignKey(
+        'imports.DataImport',
+        on_delete=models.CASCADE,
+        related_name='vpp_average_score_snapshots',
+        verbose_name='Импорт',
+    )
+
+    scope = models.CharField(
+        'Область расчёта',
+        max_length=20,
+        choices=Scope.choices,
+    )
+
+    direction_code = models.CharField(
+        'Код направления',
+        max_length=50,
+        blank=True,
+        default='',
+    )
+
+    direction_name = models.CharField(
+        'Название направления',
+        max_length=500,
+        blank=True,
+        default='',
+    )
+
+    average_score_by_plan = models.FloatField(
+        'Средний по плану',
+        null=True,
+        blank=True,
+    )
+
+    average_score_by_vpp_count = models.FloatField(
+        'Средний по ВПП',
+        null=True,
+        blank=True,
+    )
+
+    plan_score_sum = models.FloatField(
+        'Сумма средних баллов ВПП',
+        default=0.0,
+    )
+
+    admission_plan = models.PositiveIntegerField(
+        'План набора',
+        default=0,
+    )
+
+    plan_applications_count = models.PositiveIntegerField(
+        'ВПП в плане',
+        default=0,
+    )
+
+    plan_missing_count = models.PositiveIntegerField(
+        'Не хватает ВПП',
+        default=0,
+    )
+
+    plan_fill_percent = models.FloatField(
+        'Заполнение плана, %',
+        default=0.0,
+    )
+
+    total_applications = models.PositiveIntegerField(
+        'Всего заявлений',
+        default=0,
+    )
+
+    approvals_count = models.PositiveIntegerField(
+        'Согласий',
+        default=0,
+    )
+
+    top_priority_count = models.PositiveIntegerField(
+        'ВПП всего',
+        default=0,
+    )
+
+    imported_at = models.DateTimeField(
+        'Дата импорта',
+    )
+
+    created_at = models.DateTimeField(
+        'Дата создания снимка',
+        auto_now_add=True,
+    )
+
+    class Meta:
+        verbose_name = 'Снимок среднего балла по ВПП'
+        verbose_name_plural = 'Снимки среднего балла по ВПП'
+        ordering = ['-imported_at', 'scope', 'direction_code']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['import_log', 'scope', 'direction_code'],
+                name='unique_vpp_average_snapshot_per_import_scope_direction',
+            ),
+        ]
+
+    def __str__(self):
+        if self.scope == self.Scope.UNIVERSITY:
+            return f'Динамика ВПП по университету — {self.imported_at:%d.%m.%Y %H:%M}'
+
+        return f'{self.direction_code} — {self.imported_at:%d.%m.%Y %H:%M}'

@@ -3,17 +3,22 @@ import {
   Box,
   Chip,
   Grid,
-  Tooltip,
   Paper,
   Stack,
+  Tooltip,
   Typography,
 } from '@mui/material';
+
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import GroupsIcon from '@mui/icons-material/Groups';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import SchoolIcon from '@mui/icons-material/School';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+
+import DirectionVppAverageDynamics from './DirectionVppAverageDynamics';
 
 const numberOrDash = (value) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -31,6 +36,16 @@ const formatScore = (value) => {
   return Number(value).toFixed(2);
 };
 
+const toNumber = (value, fallback = 0) => {
+  const numberValue = Number(value);
+
+  if (Number.isNaN(numberValue)) {
+    return fallback;
+  }
+
+  return numberValue;
+};
+
 const getMonitoringValue = (monitoring, newKey, oldKey, fallback = 0) => {
   if (!monitoring) {
     return fallback;
@@ -40,7 +55,7 @@ const getMonitoringValue = (monitoring, newKey, oldKey, fallback = 0) => {
     return monitoring[newKey];
   }
 
-  if (monitoring[oldKey] !== undefined && monitoring[oldKey] !== null) {
+  if (oldKey && monitoring[oldKey] !== undefined && monitoring[oldKey] !== null) {
     return monitoring[oldKey];
   }
 
@@ -53,6 +68,7 @@ const StatCard = ({
   value,
   caption,
   tone = 'default',
+  tooltip = '',
 }) => {
   const toneSx = {
     default: {
@@ -110,16 +126,36 @@ const StatCard = ({
         </Box>
 
         <Box sx={{ minWidth: 0 }}>
-          <Typography
-            variant="body2"
-            color="text.secondary"
+          <Stack
+            direction="row"
+            spacing={0.75}
+            alignItems="center"
             sx={{ lineHeight: 1.25 }}
           >
-            {label}
-          </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ lineHeight: 1.25 }}
+            >
+              {label}
+            </Typography>
+
+            {tooltip && (
+              <Tooltip title={tooltip} arrow>
+                <InfoOutlinedIcon
+                  sx={{
+                    fontSize: 16,
+                    color: 'text.secondary',
+                    cursor: 'help',
+                  }}
+                />
+              </Tooltip>
+            )}
+          </Stack>
 
           <Typography
             variant="h5"
+            className="program-card-number"
             sx={{
               mt: 0.35,
               fontWeight: 800,
@@ -145,20 +181,155 @@ const StatCard = ({
   );
 };
 
+const VppPlanStatusBlock = ({
+  admissionPlan,
+  planApplicationsCount,
+  planMissingCount,
+  planFillPercent,
+  isVppPlanClosed,
+}) => {
+  const hasPlan = admissionPlan > 0;
+
+  if (!hasPlan) {
+    return (
+      <Box
+        sx={{
+          p: 1.5,
+          borderRadius: 2.5,
+          backgroundColor: '#fef2f2',
+          border: '1px solid #fecaca',
+        }}
+      >
+        <Stack direction="row" spacing={1} alignItems="flex-start">
+          <WarningAmberIcon
+            fontSize="small"
+            sx={{ mt: 0.15, color: '#b91c1c' }}
+          />
+
+          <Box>
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 900,
+                color: '#991b1b',
+              }}
+            >
+              План набора не задан
+            </Typography>
+
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                mt: 0.4,
+                color: '#991b1b',
+              }}
+            >
+              Невозможно проверить закрытие общего конкурса по ВПП.
+            </Typography>
+          </Box>
+        </Stack>
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        p: 1.5,
+        borderRadius: 2.5,
+        backgroundColor: isVppPlanClosed ? '#ecfdf3' : '#fffbeb',
+        border: '1px solid',
+        borderColor: isVppPlanClosed ? '#bbf7d0' : '#fde68a',
+      }}
+    >
+      <Stack direction="row" spacing={1} alignItems="flex-start">
+        <Box
+          sx={{
+            mt: 0.15,
+            display: 'flex',
+            color: isVppPlanClosed ? '#15803d' : '#b45309',
+          }}
+        >
+          {isVppPlanClosed ? (
+            <CheckCircleIcon fontSize="small" />
+          ) : (
+            <WarningAmberIcon fontSize="small" />
+          )}
+        </Box>
+
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Stack
+            direction="row"
+            spacing={0.75}
+            alignItems="center"
+            flexWrap="wrap"
+            useFlexGap
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 900,
+                color: isVppPlanClosed ? '#166534' : '#92400e',
+              }}
+            >
+              {isVppPlanClosed
+                ? 'Общий конкурс закрыт ВПП'
+                : `Не хватает ВПП: ${planMissingCount}`}
+            </Typography>
+
+            <Tooltip
+              title="Проверка показывает, хватает ли заявлений с ВПП / высшим приоритетом для закрытия плана набора по общему конкурсу. Если ВПП меньше плана, показатель «Средний по плану» будет ниже, потому что сумма баллов делится на весь план набора."
+              arrow
+            >
+              <InfoOutlinedIcon
+                sx={{
+                  fontSize: 16,
+                  color: isVppPlanClosed ? '#166534' : '#92400e',
+                  cursor: 'help',
+                }}
+              />
+            </Tooltip>
+          </Stack>
+
+          <Typography
+            variant="caption"
+            sx={{
+              display: 'block',
+              mt: 0.5,
+              color: isVppPlanClosed ? '#166534' : '#92400e',
+            }}
+          >
+            ВПП в плане: {planApplicationsCount} из {admissionPlan}
+            {' '}
+            · заполнено {formatScore(planFillPercent)}%
+          </Typography>
+        </Box>
+      </Stack>
+    </Box>
+  );
+};
+
 const ProgramHeader = ({
   program,
   selectedCount,
 }) => {
   const admissionPlan = Number(program.admission_plan || 0);
   const targetAvgScore = Number(program.target_avg_score || 0);
-  const availablePlaces = Math.max(admissionPlan - selectedCount, 0);
 
   const monitoring = program.monitoring;
 
-  const monitoringAvgScore = getMonitoringValue(
+  const monitoringAvgScoreByPlan = getMonitoringValue(
     monitoring,
+    'average_score_by_plan',
     'average_score',
-    'avg_score',
+    null
+  );
+
+  const monitoringAvgScoreByVppCount = getMonitoringValue(
+    monitoring,
+    'average_score_by_vpp_count',
+    'average_score_by_vpp_count',
     null
   );
 
@@ -183,7 +354,56 @@ const ProgramHeader = ({
     null
   );
 
-  const selectedTone = selectedCount > admissionPlan ? 'danger' : 'success';
+  const planApplicationsCount = toNumber(
+    getMonitoringValue(
+      monitoring,
+      'plan_applications_count',
+      'plan_applications_count',
+      0
+    )
+  );
+
+  const planMissingFromApi = getMonitoringValue(
+    monitoring,
+    'plan_missing_count',
+    'plan_missing_count',
+    null
+  );
+
+  const planMissingCount = planMissingFromApi !== null
+    ? toNumber(planMissingFromApi, 0)
+    : Math.max(admissionPlan - planApplicationsCount, 0);
+
+  const planFillPercent = toNumber(
+    getMonitoringValue(
+      monitoring,
+      'plan_fill_percent',
+      'plan_fill_percent',
+      admissionPlan > 0 ? (planApplicationsCount / admissionPlan) * 100 : 0
+    )
+  );
+
+  const isVppPlanClosed = admissionPlan > 0 && planMissingCount <= 0;
+
+  const selectedTone = admissionPlan > 0 && selectedCount > admissionPlan
+    ? 'danger'
+    : 'success';
+
+  const selectedCaption = (() => {
+    if (admissionPlan <= 0) {
+      return 'План не задан';
+    }
+
+    if (selectedCount > admissionPlan) {
+      return 'План превышен';
+    }
+
+    if (selectedCount === admissionPlan) {
+      return 'План заполнен';
+    }
+
+    return 'В пределах плана';
+  })();
 
   return (
     <Paper
@@ -278,7 +498,7 @@ const ProgramHeader = ({
                 maxWidth: 820,
               }}
             >
-              Выберите абитуриентов в пределах плана приёма и рассчитайте средний балл выборки.
+              Выберите абитуриентов в пределах плана набора и рассчитайте средний балл выборки.
             </Typography>
           </Box>
         </Stack>
@@ -295,9 +515,10 @@ const ProgramHeader = ({
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
               icon={<GroupsIcon />}
-              label="План приёма"
+              label="План набора"
               value={`${admissionPlan} мест`}
-              caption={`Доступно: ${availablePlaces}`}
+              caption="Места общего конкурса"
+              tooltip="План набора — количество мест по общему конкурсу для выбранного направления."
             />
           </Grid>
 
@@ -306,27 +527,31 @@ const ProgramHeader = ({
               icon={<EmojiEventsIcon />}
               label="Целевой балл"
               value={formatScore(targetAvgScore)}
-              caption="Ориентир для набора"
+              caption="Ориентир Приоритет-2030"
               tone="warning"
+              tooltip="Целевой средний балл рассчитывается по правилам показателя Приоритет-2030: учитываются абитуриенты в пределах плана набора по общему конкурсу. Для БВИ используется 100, для обычных направлений учитываются ЕГЭ, для отдельных направлений — допустимые вступительные испытания."
             />
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
               icon={<FactCheckIcon />}
-              label="Выбрано"
+              label="Выбрано вручную"
               value={`${selectedCount}/${admissionPlan}`}
-              caption={selectedCount > admissionPlan ? 'План превышен' : 'В пределах плана'}
+              caption={selectedCaption}
               tone={selectedTone}
+              tooltip="Это ручная выборка на странице расчёта. Она может отличаться от мониторинга ВПП, который считается автоматически по заявлениям с высшим приоритетом."
             />
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
               icon={<TrendingUpIcon />}
-              label="Средний по ВПП по мониторингу"
-              value={formatScore(monitoringAvgScore)}
-              caption="По загруженным заявлениям с ВПП"
+              label="Средний по плану"
+              value={formatScore(monitoringAvgScoreByPlan)}
+              caption="Сумма ВПП / план набора"
+              tone={isVppPlanClosed ? 'success' : 'warning'}
+              tooltip="Показатель считается как сумма средних баллов заявлений с ВПП в пределах плана набора, делённая на план набора. Если ВПП меньше плана, показатель снижается."
             />
           </Grid>
         </Grid>
@@ -345,7 +570,7 @@ const ProgramHeader = ({
               direction="row"
               spacing={1}
               alignItems="center"
-              sx={{ mb: 1 }}
+              sx={{ mb: 1.5 }}
             >
               <Typography
                 variant="subtitle1"
@@ -355,7 +580,7 @@ const ProgramHeader = ({
               </Typography>
 
               <Tooltip
-                title="Средний балл считается только по заявлениям с ВПП / высшим приоритетом. Абитуриенты и согласия ниже показываются справочно по направлению."
+                title="Показываются два разных показателя. «Средний по плану» делится на план набора. «Средний по ВПП» делится только на количество найденных ВПП в пределах плана."
                 arrow
               >
                 <InfoOutlinedIcon
@@ -369,37 +594,94 @@ const ProgramHeader = ({
             </Stack>
 
             <Grid container spacing={1.5}>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12}>
+                <VppPlanStatusBlock
+                  admissionPlan={admissionPlan}
+                  planApplicationsCount={planApplicationsCount}
+                  planMissingCount={planMissingCount}
+                  planFillPercent={planFillPercent}
+                  isVppPlanClosed={isVppPlanClosed}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
                 <Typography variant="body2" color="text.secondary">
-                  Средний балл по ВПП
+                  Средний по плану
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                  {formatScore(monitoringAvgScore)}
+
+                <Typography
+                  variant="h6"
+                  className="program-card-number"
+                  sx={{ fontWeight: 800 }}
+                >
+                  {formatScore(monitoringAvgScoreByPlan)}
+                </Typography>
+
+                <Typography variant="caption" color="text.secondary">
+                  Сумма ВПП / план набора
                 </Typography>
               </Grid>
 
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6} md={3}>
                 <Typography variant="body2" color="text.secondary">
-                  Абитуриентов
+                  Средний по ВПП
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                  {numberOrDash(monitoringApplicants)}
+
+                <Typography
+                  variant="h6"
+                  className="program-card-number"
+                  sx={{ fontWeight: 800 }}
+                >
+                  {formatScore(monitoringAvgScoreByVppCount)}
+                </Typography>
+
+                <Typography variant="caption" color="text.secondary">
+                  Сумма ВПП / количество ВПП
                 </Typography>
               </Grid>
 
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Typography variant="body2" color="text.secondary">
+                  ВПП в плане
+                </Typography>
+
+                <Typography
+                  variant="h6"
+                  className="program-card-number"
+                  sx={{ fontWeight: 800 }}
+                >
+                  {admissionPlan > 0
+                    ? `${planApplicationsCount}/${admissionPlan}`
+                    : '—'}
+                </Typography>
+
+                <Typography variant="caption" color="text.secondary">
+                  Заполнено {formatScore(planFillPercent)}%
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
                 <Typography variant="body2" color="text.secondary">
                   Согласий
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 800 }}>
+
+                <Typography
+                  variant="h6"
+                  className="program-card-number"
+                  sx={{ fontWeight: 800 }}
+                >
                   {numberOrDash(monitoringApprovals)}
+                </Typography>
+
+                <Typography variant="caption" color="text.secondary">
+                  Всего заявлений: {numberOrDash(monitoringApplicants)}
                 </Typography>
               </Grid>
 
               {monitoringTopPriority !== null && monitoringTopPriority !== undefined && (
                 <Grid item xs={12}>
                   <Typography variant="body2" color="text.secondary">
-                    Высший приоритет: {monitoringTopPriority}
+                    Всего заявлений с высшим приоритетом: {monitoringTopPriority}
                   </Typography>
                 </Grid>
               )}
@@ -407,6 +689,19 @@ const ProgramHeader = ({
           </Box>
         )}
       </Box>
+
+      {program?.code && (
+        <Box
+          sx={{
+            p: { xs: 1.5, sm: 2, md: 2.5 },
+            pt: 0,
+            backgroundColor: '#f8fafc',
+            color: 'text.primary',
+          }}
+        >
+          <DirectionVppAverageDynamics directionCode={program.code} />
+        </Box>
+      )}
     </Paper>
   );
 };

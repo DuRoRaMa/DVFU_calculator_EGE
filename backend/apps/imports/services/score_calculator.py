@@ -16,28 +16,32 @@ def is_special_direction(training_direction: str) -> bool:
     )
 
 
-def calculate_average_score(item: dict) -> float:
+def get_used_exam_scores(item: dict) -> list[float]:
     """
-    Старая бизнес-логика расчета среднего балла:
-
-    - БВИ / NoExams = 100;
-    - обычные направления = только ЕГЭ;
-    - направления-исключения = ЕГЭ + ДВИ/ВИ.
+    Возвращает список баллов экзаменов, которые должны участвовать
+    в расчёте среднего балла и суммы баллов без индивидуальных достижений.
     """
 
-    if to_bool(item.get('NoExams')):
-        return NO_EXAMS_AVERAGE_SCORE
-
-    training_direction = get_text(item.get('TrainingDirection'))
+    training_direction = get_text(
+        item.get('TrainingDirection')
+        or item.get('SpecName')
+        or item.get('DirectionName')
+    )
     special_direction = is_special_direction(training_direction)
 
     scores = []
 
     for index in range(1, 6):
-        score = to_float(item.get(f'Test{index}Score'), default=0.0)
+        score = to_float(item.get(f'Test{index}Score'), default=None)
         exam_form = normalize_upper(item.get(f'Test{index}Form'))
 
+        if score is None:
+            continue
+
         if score <= 0:
+            continue
+
+        if score > 100:
             continue
 
         if exam_form == EGE_EXAM_FORM:
@@ -47,7 +51,46 @@ def calculate_average_score(item: dict) -> float:
         if special_direction and exam_form in SPECIAL_EXAM_FORMS:
             scores.append(score)
 
+    return scores
+
+
+def calculate_average_score(item: dict) -> float:
+    """
+    Бизнес-логика расчёта среднего балла:
+
+    - БВИ / NoExams = 100;
+    - обычные направления = только ЕГЭ;
+    - направления-исключения = ЕГЭ + ДВИ/ВИ;
+    - индивидуальные достижения не учитываются.
+    """
+
+    if to_bool(item.get('NoExams')):
+        return NO_EXAMS_AVERAGE_SCORE
+
+    scores = get_used_exam_scores(item)
+
     if not scores:
         return 0.0
 
     return round(sum(scores) / len(scores), 2)
+
+
+def calculate_sum_score_without_individual_achievements(item: dict) -> int:
+    """
+    Считает сумму баллов без индивидуальных достижений.
+
+    Важно:
+    - SumScore из источника не используем;
+    - суммируем ровно те экзамены, которые участвуют в calculate_average_score;
+    - для БВИ / NoExams возвращаем 100.
+    """
+
+    if to_bool(item.get('NoExams')):
+        return int(NO_EXAMS_AVERAGE_SCORE)
+
+    scores = get_used_exam_scores(item)
+
+    if not scores:
+        return 0
+
+    return int(round(sum(scores)))

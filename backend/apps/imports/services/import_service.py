@@ -4,23 +4,32 @@ from django.utils import timezone
 from apps.admissions.models import ApplicantApplication
 from apps.core.utils import get_text, to_bool, to_int
 from apps.imports.models import DataImport, ImportSettings
+from apps.admissions.services.vpp_dynamics import create_vpp_average_score_snapshots
 from apps.imports.services.admission_source import get_admission_source
 from apps.imports.services.filters import (
     get_student_id,
     is_allowed_applicant_item,
 )
-from apps.imports.services.score_calculator import calculate_average_score
+from apps.imports.services.score_calculator import (
+    calculate_average_score,
+    calculate_sum_score_without_individual_achievements,
+)
 from apps.programs.models import EducationProgram
 
 
 def build_applicant_from_item(item: dict) -> ApplicantApplication:
+    avg_score = calculate_average_score(item)
+    sum_score_without_id = calculate_sum_score_without_individual_achievements(item)
+
     return ApplicantApplication(
         student_id=get_student_id(item),
         student_name=get_text(item.get('Name')),
         direction_code=get_text(item.get('SpecCode')),
         direction_name=get_text(item.get('TrainingDirection')),
-        avg_score=calculate_average_score(item),
-        sum_score=to_int(item.get('SumScore')),
+
+        avg_score=avg_score,
+        sum_score=sum_score_without_id,
+
         no_exams=to_bool(item.get('NoExams')),
         approval=to_bool(item.get('Approval')),
         high_priority_no_original=to_bool(item.get('HightPriorityNoOriginal')),
@@ -94,6 +103,12 @@ def execute_import(import_log: DataImport) -> dict:
         source = get_admission_source(settings_obj)
         raw_items = source.fetch()
 
+        if not raw_items:
+            raise ValueError(
+                'Источник импорта вернул пустой список. '
+                'Перезапись заявлений отменена, чтобы не очистить базу случайно.'
+            )
+
         applicants_by_key = {}
 
         for item in raw_items:
@@ -110,6 +125,13 @@ def execute_import(import_log: DataImport) -> dict:
             applicants_by_key[key] = applicant
 
         applicants = list(applicants_by_key.values())
+
+        if not applicants:
+            raise ValueError(
+                'После фильтрации не осталось подходящих заявлений. '
+                'Перезапись заявлений отменена. Проверьте Category, '
+                'LevelEducation, StatusVUZ, Actual и SpecCode.'
+            )
 
         with transaction.atomic():
             plans_updated = sync_admission_plans_from_raw_items(raw_items)
@@ -134,12 +156,13 @@ def execute_import(import_log: DataImport) -> dict:
                 'error_message',
             ]
         )
-
+        snapshots_created = create_vpp_average_score_snapshots(import_log)
         return {
             'status': DataImport.Status.SUCCESS,
             'loaded': len(applicants),
             'total': len(raw_items),
             'admission_plans_updated': plans_updated,
+            'vpp_average_snapshots_created': snapshots_created,
             'message': (
                 f'Импорт успешно завершен. '
                 f'Получено записей: {len(raw_items)}. '

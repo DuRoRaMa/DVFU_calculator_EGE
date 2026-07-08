@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '/ege-calc-backend/api';
 
 export const getAccessToken = () => {
   return localStorage.getItem('accessToken');
@@ -264,5 +264,18 @@ export const getRecommendations = (_programId, data = {}) => {
     application_ids: data.application_ids || [],
   });
 };
+export const getUniversityVppAverageDynamics = (params = {}) => {
+  return api.get('/admin/vpp-average-dynamics/university/', {
+    params,
+  });
+};
 
+export const getDirectionVppAverageDynamics = (directionCode, params = {}) => {
+  return api.get(
+    `/admin/vpp-average-dynamics/directions/${encodeURIComponent(directionCode)}/`,
+    {
+      params,
+    }
+  );
+};
 export default api;

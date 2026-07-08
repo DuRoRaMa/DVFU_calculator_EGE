@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   CircularProgress,
   Divider,
   FormControlLabel,
@@ -18,9 +19,14 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import UniversityVppAverageDynamics from './UniversityVppAverageDynamics';
 import {
   getDirectionStats,
   getImportSettings,
@@ -78,6 +84,32 @@ const formatDateTime = (value) => {
   return date.toLocaleString('ru-RU');
 };
 
+const formatScore = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '—';
+  }
+
+  return Number(value).toFixed(2);
+};
+
+const formatPercent = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '0.00%';
+  }
+
+  return `${Number(value).toFixed(2)}%`;
+};
+
+const numberOrZero = (value) => {
+  const numberValue = Number(value);
+
+  if (Number.isNaN(numberValue)) {
+    return 0;
+  }
+
+  return numberValue;
+};
+
 const getErrorMessage = (error, fallback) => {
   const data = error?.response?.data;
 
@@ -108,6 +140,126 @@ const getErrorMessage = (error, fallback) => {
   }
 
   return fallback;
+};
+
+const StatCard = ({
+  title,
+  value,
+  caption,
+  tooltip,
+  tone = 'default',
+  icon = null,
+}) => {
+  const toneMap = {
+    default: {
+      borderColor: '#e5e7eb',
+      background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+      valueColor: 'text.primary',
+      iconColor: '#1d4ed8',
+      iconBg: '#eff6ff',
+    },
+    success: {
+      borderColor: '#bbf7d0',
+      background: 'linear-gradient(135deg, #ecfdf3 0%, #ffffff 100%)',
+      valueColor: '#15803d',
+      iconColor: '#15803d',
+      iconBg: '#dcfce7',
+    },
+    warning: {
+      borderColor: '#fde68a',
+      background: 'linear-gradient(135deg, #fffbeb 0%, #ffffff 100%)',
+      valueColor: '#b45309',
+      iconColor: '#b45309',
+      iconBg: '#fef3c7',
+    },
+    danger: {
+      borderColor: '#fecaca',
+      background: 'linear-gradient(135deg, #fef2f2 0%, #ffffff 100%)',
+      valueColor: '#b91c1c',
+      iconColor: '#b91c1c',
+      iconBg: '#fee2e2',
+    },
+  };
+
+  const currentTone = toneMap[tone] || toneMap.default;
+
+  return (
+    <Card
+      elevation={0}
+      sx={{
+        height: '100%',
+        borderRadius: 3,
+        border: '1px solid',
+        borderColor: currentTone.borderColor,
+        background: currentTone.background,
+      }}
+    >
+      <CardContent>
+        <Stack direction="row" spacing={1.25} alignItems="flex-start">
+          {icon && (
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                flex: '0 0 auto',
+                borderRadius: 2.5,
+                display: 'grid',
+                placeItems: 'center',
+                backgroundColor: currentTone.iconBg,
+                color: currentTone.iconColor,
+              }}
+            >
+              {icon}
+            </Box>
+          )}
+
+          <Box sx={{ minWidth: 0 }}>
+            <Stack direction="row" spacing={0.75} alignItems="center">
+              <Typography color="text.secondary" sx={{ lineHeight: 1.25 }}>
+                {title}
+              </Typography>
+
+              {tooltip && (
+                <Tooltip title={tooltip} arrow>
+                  <InfoOutlinedIcon
+                    sx={{
+                      fontSize: 16,
+                      color: 'text.secondary',
+                      cursor: 'help',
+                    }}
+                  />
+                </Tooltip>
+              )}
+            </Stack>
+
+            <Typography
+              variant="h4"
+              className="metric-number"
+              sx={{
+                mt: 1,
+                fontWeight: 900,
+                color: currentTone.valueColor,
+                lineHeight: 1.1,
+                wordBreak: 'break-word',
+              }}
+            >
+              {value}
+            </Typography>
+
+            {caption && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.75 }}
+              >
+                {caption}
+              </Typography>
+            )}
+          </Box>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
 };
 
 const AdminAnalyticsPanel = () => {
@@ -155,20 +307,22 @@ const AdminAnalyticsPanel = () => {
       0
     );
 
-    const weightedScoreSum = directions.reduce((sum, direction) => {
-      return (
-        sum +
-        Number(direction.average_score || 0) *
-          Number(direction.total_applications || 0)
-      );
-    }, 0);
+    const missingVppDirectionsCount = directions.filter((direction) => {
+      return Number(direction.plan_missing_count || 0) > 0;
+    }).length;
 
-    const avgScoreAll = totalApplicants
-      ? weightedScoreSum / totalApplicants
-      : 0;
+    const closedVppDirectionsCount = directions.filter((direction) => {
+      return (
+        Number(direction.admission_plan || 0) > 0 &&
+        Number(direction.plan_missing_count || 0) <= 0
+      );
+    }).length;
 
     const topByScore = [...directions]
-      .sort((a, b) => Number(b.average_score || 0) - Number(a.average_score || 0))
+      .sort((a, b) => (
+        Number(b.average_score_by_plan ?? b.average_score ?? 0) -
+        Number(a.average_score_by_plan ?? a.average_score ?? 0)
+      ))
       .slice(0, 10);
 
     const topByApplicants = [...directions]
@@ -184,7 +338,8 @@ const AdminAnalyticsPanel = () => {
       approvalCount,
       topPriorityCount,
       highPriorityNoOriginalCount,
-      avgScoreAll: Number(avgScoreAll.toFixed(2)),
+      missingVppDirectionsCount,
+      closedVppDirectionsCount,
       topByScore,
       topByApplicants,
     };
@@ -337,6 +492,9 @@ const AdminAnalyticsPanel = () => {
     return null;
   }
 
+  const planMissingCount = numberOrZero(universityStats?.plan_missing_count);
+  const isUniversityPlanClosed = planMissingCount <= 0;
+
   return (
     <Box>
       <Typography variant="h4" component="h1" gutterBottom>
@@ -344,7 +502,7 @@ const AdminAnalyticsPanel = () => {
       </Typography>
 
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Общие показатели по приемной кампании и управление обновлением данных.
+        Общие показатели по приёмной кампании, контроль ВПП и управление обновлением данных.
       </Typography>
 
       {error && (
@@ -385,81 +543,104 @@ const AdminAnalyticsPanel = () => {
           display: 'grid',
           gridTemplateColumns: {
             xs: '1fr',
-            md: 'repeat(4, minmax(0, 1fr))',
+            sm: 'repeat(2, minmax(0, 1fr))',
+            lg: 'repeat(4, minmax(0, 1fr))',
           },
           gap: 2,
           mb: 3,
         }}
       >
-        <Card>
-          <CardContent>
-            <Typography color="text.secondary" gutterBottom>
-              Средний балл по университету
-            </Typography>
+        <StatCard
+          title="Средний по плану"
+          value={formatScore(
+            universityStats?.average_score_by_plan ?? universityStats?.average_score
+          )}
+          caption="Сумма ВПП / общий план набора"
+          tooltip="Считается как сумма средних баллов ВПП в пределах планов набора, делённая на общий план набора по университету. Если ВПП меньше плана, показатель снижается."
+          tone={isUniversityPlanClosed ? 'success' : 'warning'}
+          icon={
+            isUniversityPlanClosed
+              ? <CheckCircleIcon fontSize="small" />
+              : <WarningAmberIcon fontSize="small" />
+          }
+        />
 
-            <Typography variant="h4">
-              {universityStats?.average_score ?? 0}
-            </Typography>
+        <StatCard
+          title="Средний по ВПП"
+          value={formatScore(universityStats?.average_score_by_vpp_count)}
+          caption="Сумма ВПП / количество ВПП"
+          tooltip="Считается как сумма средних баллов ВПП в пределах планов набора, делённая только на количество ВПП. Показывает фактическое качество уже имеющихся ВПП без штрафа за незакрытый план."
+          tone="success"
+          icon={<CheckCircleIcon fontSize="small" />}
+        />
 
-            <Typography variant="body2" color="text.secondary">
-              По загруженным заявлениям
-            </Typography>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Заполнение плана ВПП"
+          value={`${universityStats?.plan_applications_count ?? 0}/${universityStats?.total_admission_plan ?? 0}`}
+          caption={`Заполнено: ${formatPercent(universityStats?.plan_fill_percent)}`}
+          tooltip="Показывает, сколько мест общего конкурса уже закрыто заявлениями с ВПП / высшим приоритетом в пределах планов набора."
+          tone={isUniversityPlanClosed ? 'success' : 'warning'}
+          icon={
+            isUniversityPlanClosed
+              ? <CheckCircleIcon fontSize="small" />
+              : <WarningAmberIcon fontSize="small" />
+          }
+        />
 
-        <Card>
-          <CardContent>
-            <Typography color="text.secondary" gutterBottom>
-              Средний балл по направлениям
-            </Typography>
-
-            <Typography variant="h4">
-              {analytics.avgScoreAll}
-            </Typography>
-
-            <Typography variant="body2" color="text.secondary">
-              Взвешенный по количеству заявлений
-            </Typography>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent>
-            <Typography color="text.secondary" gutterBottom>
-              Заявлений
-            </Typography>
-
-            <Typography variant="h4">
-              {analytics.totalApplicants}
-            </Typography>
-
-            <Typography variant="body2" color="text.secondary">
-              Направлений: {analytics.totalDirections}
-            </Typography>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent>
-            <Typography color="text.secondary" gutterBottom>
-              Согласия и приоритеты
-            </Typography>
-
-            <Typography variant="body1">
-              {analytics.approvalCount} согласий
-            </Typography>
-
-            <Typography variant="body2" color="text.secondary">
-              Высший приоритет: {analytics.topPriorityCount}
-            </Typography>
-
-            <Typography variant="body2" color="text.secondary">
-              ВПР без оригинала: {analytics.highPriorityNoOriginalCount}
-            </Typography>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Не хватает ВПП"
+          value={planMissingCount}
+          caption="Для закрытия общего конкурса"
+          tooltip="Количество мест общего конкурса, которые пока не закрыты заявлениями с ВПП / высшим приоритетом."
+          tone={planMissingCount > 0 ? 'warning' : 'success'}
+          icon={
+            planMissingCount > 0
+              ? <WarningAmberIcon fontSize="small" />
+              : <CheckCircleIcon fontSize="small" />
+          }
+        />
       </Box>
 
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(2, minmax(0, 1fr))',
+            lg: 'repeat(4, minmax(0, 1fr))',
+          },
+          gap: 2,
+          mb: 3,
+        }}
+      >
+        <StatCard
+          title="Заявлений"
+          value={analytics.totalApplicants}
+          caption={`Направлений: ${analytics.totalDirections}`}
+        />
+
+        <StatCard
+          title="Согласий"
+          value={analytics.approvalCount}
+          caption="По всем заявлениям"
+        />
+
+        <StatCard
+          title="Высший приоритет"
+          value={analytics.topPriorityCount}
+          caption="Всего заявлений с ВПП"
+        />
+
+        <StatCard
+          title="Направления с нехваткой ВПП"
+          value={analytics.missingVppDirectionsCount}
+          caption={`Закрыто: ${analytics.closedVppDirectionsCount}`}
+          tone={analytics.missingVppDirectionsCount > 0 ? 'warning' : 'success'}
+        />
+      </Box>
+      <Box sx={{ mb: 3 }}>
+        <UniversityVppAverageDynamics />
+      </Box>
       <Box
         sx={{
           display: 'grid',
@@ -688,9 +869,9 @@ const AdminAnalyticsPanel = () => {
           gap: 3,
         }}
       >
-        <Paper sx={{ p: 3, borderRadius: 3 }}>
+        <Paper sx={{ p: 3, borderRadius: 3, overflowX: 'auto' }}>
           <Typography variant="h6" gutterBottom>
-            Топ направлений по среднему баллу
+            Топ направлений по среднему по плану
           </Typography>
 
           <DirectionsTable
@@ -705,18 +886,40 @@ const AdminAnalyticsPanel = () => {
                 label: 'Направление',
               },
               {
-                key: 'average_score',
-                label: 'Средний балл',
+                key: 'average_score_by_plan',
+                label: 'По плану',
+                render: (row) => formatScore(row.average_score_by_plan ?? row.average_score),
               },
               {
-                key: 'total_applications',
-                label: 'Заявлений',
+                key: 'average_score_by_vpp_count',
+                label: 'По ВПП',
+                render: (row) => formatScore(row.average_score_by_vpp_count),
+              },
+              {
+                key: 'plan_applications_count',
+                label: 'ВПП в плане',
+                render: (row) => `${row.plan_applications_count ?? 0}/${row.admission_plan ?? 0}`,
+              },
+              {
+                key: 'plan_missing_count',
+                label: 'Статус',
+                render: (row) => {
+                  const missing = Number(row.plan_missing_count || 0);
+
+                  return (
+                    <Chip
+                      size="small"
+                      label={missing > 0 ? `Не хватает ${missing}` : 'Закрыто'}
+                      color={missing > 0 ? 'warning' : 'success'}
+                    />
+                  );
+                },
               },
             ]}
           />
         </Paper>
 
-        <Paper sx={{ p: 3, borderRadius: 3 }}>
+        <Paper sx={{ p: 3, borderRadius: 3, overflowX: 'auto' }}>
           <Typography variant="h6" gutterBottom>
             Топ направлений по количеству заявлений
           </Typography>
@@ -739,6 +942,16 @@ const AdminAnalyticsPanel = () => {
               {
                 key: 'approvals_count',
                 label: 'Согласий',
+              },
+              {
+                key: 'average_score_by_plan',
+                label: 'По плану',
+                render: (row) => formatScore(row.average_score_by_plan ?? row.average_score),
+              },
+              {
+                key: 'average_score_by_vpp_count',
+                label: 'По ВПП',
+                render: (row) => formatScore(row.average_score_by_vpp_count),
               },
             ]}
           />
@@ -786,7 +999,7 @@ const DirectionsTable = ({
           <TableRow key={row.direction_code}>
             {columns.map((column) => (
               <TableCell key={column.key}>
-                {row[column.key] ?? '—'}
+                {column.render ? column.render(row) : (row[column.key] ?? '—')}
               </TableCell>
             ))}
           </TableRow>
