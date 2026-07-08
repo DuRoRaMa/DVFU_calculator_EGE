@@ -143,9 +143,10 @@ USE_I18N = True
 USE_TZ = True
 
 
-STATIC_URL = '/static/'
+STATIC_URL = os.getenv('DJANGO_STATIC_URL', '/static/')
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
+MEDIA_URL = os.getenv('DJANGO_MEDIA_URL', '/media/')
+MEDIA_ROOT = BASE_DIR / 'media'
 STORAGES = {
     'default': {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
@@ -256,3 +257,4 @@ SECURE_SSL_REDIRECT = env_bool(
     'DJANGO_SECURE_SSL_REDIRECT',
     default=False,
 )
+FORCE_SCRIPT_NAME = os.getenv('DJANGO_FORCE_SCRIPT_NAME') or None
