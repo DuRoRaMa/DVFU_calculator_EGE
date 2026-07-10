@@ -699,7 +699,9 @@ const ProgramHeader = ({
             color: 'text.primary',
           }}
         >
-          <DirectionVppAverageDynamics directionCode={program.code} />
+          {isStaff && (
+            <DirectionVppAverageDynamics directionCode={program.code} />
+          )}
         </Box>
       )}
     </Paper>
