@@ -477,3 +477,33 @@ def get_university_stats():
         'by_level_education': by_level_education,
         'by_status_vuz': by_status_vuz,
     }
+
+def get_new_model_direction_stats():
+    new_model_codes = set(
+        EducationProgram.objects
+        .filter(is_new_model=True)
+        .values_list('code', flat=True)
+    )
+
+    rows = [
+        row
+        for row in get_direction_stats()
+        if row.get('direction_code') in new_model_codes
+    ]
+
+    plan_score_sum = sum(row.get('plan_score_sum') or 0 for row in rows)
+    vpp_count = sum(row.get('plan_applications_count') or 0 for row in rows)
+    admission_plan = sum(row.get('admission_plan') or 0 for row in rows)
+    missing = sum(row.get('plan_missing_count') or 0 for row in rows)
+
+    return {
+        'aggregate': {
+            'directions_count': len(rows),
+            'average_score_by_vpp_count': round(plan_score_sum / vpp_count, 2) if vpp_count else 0,
+            'plan_applications_count': vpp_count,
+            'admission_plan': admission_plan,
+            'plan_missing_count': missing,
+            'plan_fill_percent': round(vpp_count / admission_plan * 100, 2) if admission_plan else 0,
+        },
+        'directions': rows,
+    }

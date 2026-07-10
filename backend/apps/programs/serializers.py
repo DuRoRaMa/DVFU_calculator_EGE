@@ -70,6 +70,7 @@ class EducationProgramShortSerializer(serializers.ModelSerializer):
             'target_avg_score',
             'status',
             'status_label',
+            'is_new_model',
         ]
         read_only_fields = fields
 

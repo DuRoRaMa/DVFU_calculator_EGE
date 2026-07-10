@@ -134,6 +134,11 @@ class EducationProgram(models.Model):
         default=False,
         help_text='Если включено, заявления по этому коду не будут схлопываться только по коду направления. Уникальность будет считаться по связке: абитуриент + код + название ОП.',
     )
+    is_new_model = models.BooleanField(
+        'Новая модель',
+        default=False,
+        help_text='Если включено, направление попадёт в отдельную статистику по новой модели.',
+    )
     subjects = models.ManyToManyField(
         Subject,
         through='ProgramSubjectRequirement',
