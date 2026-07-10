@@ -32,11 +32,10 @@ import ProtectedRoute from './components/Auth/ProtectedRoute';
 
 import {
   clearAuthTokens,
-  getDirectionStats,
   getMe,
   getPrograms,
+  getPublicDirectionMonitoring,
   hasAuthTokens,
-  isAdminUser,
   saveCurrentUser,
 } from './services/api';
 
@@ -97,8 +96,14 @@ const attachMonitoringStats = (programs, directionStats) => {
   const statsByCode = new Map();
 
   directionStats.forEach((item) => {
-    if (!statsByCode.has(item.direction_code)) {
-      statsByCode.set(item.direction_code, item);
+    const directionCode = item?.direction_code;
+
+    if (!directionCode) {
+      return;
+    }
+
+    if (!statsByCode.has(directionCode)) {
+      statsByCode.set(directionCode, item);
     }
   });
 
@@ -122,16 +127,28 @@ const ProgramRoute = ({
     }
 
     return (
-      programs.find((program) => program.id?.toString() === programId?.toString()) ||
-      null
+      programs.find(
+        (program) => program.id?.toString() === programId?.toString()
+      ) || null
     );
-  }, [programId, programs, selectedProgram]);
+  }, [
+    programId,
+    programs,
+    selectedProgram,
+  ]);
 
   useEffect(() => {
-    if (routeProgram && selectedProgram?.id !== routeProgram.id) {
+    if (
+      routeProgram &&
+      selectedProgram?.id !== routeProgram.id
+    ) {
       onSelectProgram(routeProgram);
     }
-  }, [routeProgram, selectedProgram, onSelectProgram]);
+  }, [
+    routeProgram,
+    selectedProgram,
+    onSelectProgram,
+  ]);
 
   if (!routeProgram) {
     return <Navigate to="/" replace />;
@@ -146,7 +163,10 @@ const ProtectedLayout = ({
   children,
 }) => (
   <>
-    <Header currentUser={currentUser} onLogout={onLogout} />
+    <Header
+      currentUser={currentUser}
+      onLogout={onLogout}
+    />
 
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {children}
@@ -157,7 +177,9 @@ const ProtectedLayout = ({
 const AppContent = () => {
   const navigate = useNavigate();
 
-  const [isAuthenticated, setIsAuthenticated] = useState(hasAuthTokens());
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    hasAuthTokens()
+  );
   const [currentUser, setCurrentUser] = useState(null);
   const [programs, setPrograms] = useState([]);
   const [selectedProgram, setSelectedProgram] = useState(null);
@@ -207,31 +229,59 @@ const AppContent = () => {
         saveCurrentUser(user);
 
         const programsResponse = await getPrograms();
+        const loadedPrograms = Array.isArray(programsResponse.data)
+          ? programsResponse.data
+          : [];
 
         let directionStats = [];
 
-        if (isAdminUser(user)) {
-          try {
-            const statsResponse = await getDirectionStats();
-            directionStats = statsResponse.data;
-          } catch (statsError) {
-            console.error(statsError);
-            directionStats = [];
-          }
+        try {
+          const monitoringResponse =
+            await getPublicDirectionMonitoring();
+
+          directionStats = Array.isArray(monitoringResponse.data)
+            ? monitoringResponse.data
+            : [];
+        } catch (monitoringError) {
+          console.error(
+            'Не удалось загрузить общедоступный мониторинг ВПП:',
+            monitoringError
+          );
+
+          directionStats = [];
         }
 
-        setPrograms(
-          attachMonitoringStats(programsResponse.data, directionStats)
+        const programsWithMonitoring = attachMonitoringStats(
+          loadedPrograms,
+          directionStats
         );
+
+        setPrograms(programsWithMonitoring);
+
+        setSelectedProgram((currentSelectedProgram) => {
+          if (!currentSelectedProgram) {
+            return null;
+          }
+
+          return (
+            programsWithMonitoring.find(
+              (program) =>
+                program.id?.toString() ===
+                currentSelectedProgram.id?.toString()
+            ) || null
+          );
+        });
       } catch (err) {
         console.error(err);
 
         if (err.response?.status === 401) {
           clearAuthTokens();
           resetSessionState();
+
           navigate('/login', {
             replace: true,
           });
+
           return;
         }
 
@@ -242,7 +292,11 @@ const AppContent = () => {
     };
 
     loadInitialData();
-  }, [isAuthenticated, navigate, resetSessionState]);
+  }, [
+    isAuthenticated,
+    navigate,
+    resetSessionState,
+  ]);
 
   const handleSelectProgram = useCallback((program) => {
     setSelectedProgram(program);
@@ -261,27 +315,33 @@ const AppContent = () => {
   const handleLogin = (user) => {
     if (user) {
       setCurrentUser(user);
+      saveCurrentUser(user);
     }
 
     setIsAuthenticated(true);
   };
 
-  const renderProtectedContent = (content, requireAdmin = false) => {
+  const renderProtectedContent = (
+    content,
+    requireAdmin = false
+  ) => {
     return (
       <ProtectedRoute
         currentUser={currentUser}
         requireAdmin={requireAdmin}
       >
-        <ProtectedLayout currentUser={currentUser} onLogout={handleLogout}>
+        <ProtectedLayout
+          currentUser={currentUser}
+          onLogout={handleLogout}
+        >
           {error && (
-            <ErrorAlert message={error} onClose={() => setError(null)} />
+            <ErrorAlert
+              message={error}
+              onClose={() => setError(null)}
+            />
           )}
 
-          {loading ? (
-            <Loader />
-          ) : (
-            content
-          )}
+          {loading ? <Loader /> : content}
         </ProtectedLayout>
       </ProtectedRoute>
     );
@@ -371,7 +431,12 @@ const AppContent = () => {
 
       <Route
         path="/admin"
-        element={<Navigate to="/statistics" replace />}
+        element={
+          <Navigate
+            to="/statistics"
+            replace
+          />
+        }
       />
 
       <Route

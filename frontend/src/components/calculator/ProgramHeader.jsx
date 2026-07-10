@@ -17,6 +17,10 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import SchoolIcon from '@mui/icons-material/School';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import {
+  getCurrentUserFromStorage,
+  isAdminUser,
+} from '../../services/api';
 
 import DirectionVppAverageDynamics from './DirectionVppAverageDynamics';
 
@@ -314,6 +318,7 @@ const ProgramHeader = ({
   program,
   selectedCount,
 }) => {
+  const isAdmin = isAdminUser(getCurrentUserFromStorage());
   const admissionPlan = Number(program.admission_plan || 0);
   const targetAvgScore = Number(program.target_avg_score || 0);
 
@@ -690,20 +695,13 @@ const ProgramHeader = ({
         )}
       </Box>
 
-      {program?.code && (
-        <Box
-          sx={{
-            p: { xs: 1.5, sm: 2, md: 2.5 },
-            pt: 0,
-            backgroundColor: '#f8fafc',
-            color: 'text.primary',
-          }}
-        >
-          {isStaff && (
-            <DirectionVppAverageDynamics directionCode={program.code} />
+          {isAdmin && program?.code && (
+            <Box sx={{ mt: 2 }}>
+              <DirectionVppAverageDynamics
+                directionCode={program.code}
+              />
+            </Box>
           )}
-        </Box>
-      )}
     </Paper>
   );
 };
