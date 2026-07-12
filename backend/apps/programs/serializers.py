@@ -71,6 +71,7 @@ class EducationProgramShortSerializer(serializers.ModelSerializer):
             'status',
             'status_label',
             'is_new_model',
+            'is_priority_2030',
         ]
         read_only_fields = fields
 
