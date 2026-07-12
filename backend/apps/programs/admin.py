@@ -4,6 +4,7 @@ from .models import (
     EducationProgram,
     ProgramSubjectRequirement,
     Subject,
+    PriorityTarget
 )
 
 
@@ -51,6 +52,9 @@ class EducationProgramAdmin(admin.ModelAdmin):
         'target_avg_score',
         'status',
         'updated_at',
+        'is_priority_2030',
+        'is_op_admission',
+        'is_new_model',
     )
 
     list_filter = (
@@ -58,7 +62,16 @@ class EducationProgramAdmin(admin.ModelAdmin):
         'education_level',
         'study_form',
         'status',
+        'is_priority_2030',
+        'is_op_admission',
+        'is_new_model',
     )
+    list_editable = [
+        'is_priority_2030',
+        'is_op_admission',
+        'is_new_model',
+        'target_avg_score',
+    ]
 
     search_fields = (
         'code',
@@ -79,6 +92,55 @@ class EducationProgramAdmin(admin.ModelAdmin):
         'name',
     )
 
+@admin.register(PriorityTarget)
+class PriorityTargetAdmin(admin.ModelAdmin):
+    list_display = [
+        'target_type',
+        'ugsn_code',
+        'ugsn_name',
+        'target_avg_score',
+        'is_active',
+        'updated_at',
+    ]
+
+    list_filter = [
+        'target_type',
+        'is_active',
+    ]
+
+    list_editable = [
+        'target_avg_score',
+        'is_active',
+    ]
+
+    search_fields = [
+        'ugsn_code',
+        'ugsn_name',
+        'comment',
+    ]
+
+    fieldsets = (
+        (
+            'Основное',
+            {
+                'fields': (
+                    'target_type',
+                    'ugsn_code',
+                    'ugsn_name',
+                    'target_avg_score',
+                    'is_active',
+                )
+            },
+        ),
+        (
+            'Комментарий',
+            {
+                'fields': (
+                    'comment',
+                )
+            },
+        ),
+    )
 
 @admin.register(ProgramSubjectRequirement)
 class ProgramSubjectRequirementAdmin(admin.ModelAdmin):

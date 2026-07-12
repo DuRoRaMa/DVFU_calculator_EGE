@@ -47,13 +47,7 @@ services:
       DB_PORT: 5432
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py collectstatic --noinput &&
-             gunicorn back_api.wsgi:application
-             --bind 0.0.0.0:8000
-             --workers 3
-             --timeout 120"
+    command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn back_api.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"
     volumes:
       - ege_static_prod:/app/staticfiles
       - ege_media_prod:/app/media
@@ -79,12 +73,7 @@ services:
       DB_PORT: 5432
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-    command: >
-      celery -A back_api worker
-      --loglevel=info
-      --queues=imports
-      --concurrency=1
-      --hostname=imports@%h
+    command: celery -A back_api worker --loglevel=info --queues=imports --concurrency=1 --hostname=imports@%h
     networks:
       - ege_internal
     depends_on:
@@ -108,12 +97,7 @@ services:
       DB_PORT: 5432
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-    command: >
-      celery -A back_api worker
-      --loglevel=info
-      --queues=scheduler
-      --concurrency=1
-      --hostname=scheduler@%h
+    command: celery -A back_api worker --loglevel=info --queues=scheduler --concurrency=1 --hostname=scheduler@%h
     networks:
       - ege_internal
     depends_on:

@@ -24,6 +24,10 @@ export const getCurrentUserFromStorage = () => {
   }
 };
 
+export const getPriorityDirectionStats = () => {
+  return api.get('/admin/priority-direction-stats/');
+};
+
 export const hasAuthTokens = () => {
   return Boolean(getAccessToken() || getRefreshToken());
 };
@@ -278,4 +282,12 @@ export const getDirectionVppAverageDynamics = (directionCode, params = {}) => {
     }
   );
 };
+export const getPublicDirectionMonitoring = () => {
+  return api.get('/directions/monitoring/');
+};
+
+export const getNewModelDirectionStats = () => {
+  return api.get('/admin/new-model-direction-stats/');
+};
+
 export default api;

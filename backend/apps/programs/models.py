@@ -123,7 +123,22 @@ class EducationProgram(models.Model):
         default=Status.ACTIVE,
         db_index=True,
     )
+    is_priority_2030 = models.BooleanField(
+        'Приоритет 2030',
+        default=False,
+        help_text='Если включено, направление попадёт в отдельную статистику по приоритетным направлениям.',
+    )
 
+    is_op_admission = models.BooleanField(
+        'Приём на ОП',
+        default=False,
+        help_text='Если включено, заявления по этому коду не будут схлопываться только по коду направления. Уникальность будет считаться по связке: абитуриент + код + название ОП.',
+    )
+    is_new_model = models.BooleanField(
+        'Новая модель',
+        default=False,
+        help_text='Если включено, направление попадёт в отдельную статистику по новой модели.',
+    )
     subjects = models.ManyToManyField(
         Subject,
         through='ProgramSubjectRequirement',
@@ -139,6 +154,7 @@ class EducationProgram(models.Model):
         'Дата обновления',
         auto_now=True,
     )
+
 
     class Meta:
         verbose_name = 'Образовательная программа'
@@ -204,3 +220,72 @@ class ProgramSubjectRequirement(models.Model):
             f'{self.program.code} — {self.subject.name} '
             f'({self.year}, {optional_label})'
         )
+
+class PriorityTarget(models.Model):
+    class TargetType(models.TextChoices):
+        PRIORITY_TOTAL = 'priority_total', 'Приоритет 2030 в целом'
+        PRIORITY_UGSN = 'priority_ugsn', 'УГСН в Приоритете 2030'
+
+    target_type = models.CharField(
+        'Тип целевого показателя',
+        max_length=50,
+        choices=TargetType.choices,
+    )
+
+    ugsn_code = models.CharField(
+        'Код УГСН',
+        max_length=20,
+        blank=True,
+        default='',
+        help_text='Например: 45.00.00. Для общего показателя Приоритета 2030 оставить пустым.',
+    )
+
+    ugsn_name = models.CharField(
+        'Название УГСН',
+        max_length=500,
+        blank=True,
+        default='',
+    )
+
+    target_avg_score = models.FloatField(
+        'Целевой средний балл',
+        default=0,
+    )
+
+    is_active = models.BooleanField(
+        'Активно',
+        default=True,
+    )
+
+    comment = models.TextField(
+        'Комментарий',
+        blank=True,
+        default='',
+    )
+
+    created_at = models.DateTimeField(
+        'Дата создания',
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        'Дата обновления',
+        auto_now=True,
+    )
+
+    class Meta:
+        verbose_name = 'Целевой показатель Приоритета 2030'
+        verbose_name_plural = 'Целевые показатели Приоритета 2030'
+        ordering = ['target_type', 'ugsn_code']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['target_type', 'ugsn_code'],
+                name='unique_priority_target_by_type_and_ugsn',
+            ),
+        ]
+
+    def __str__(self):
+        if self.target_type == self.TargetType.PRIORITY_TOTAL:
+            return f'Приоритет 2030 в целом — {self.target_avg_score}'
+
+        return f'{self.ugsn_code} {self.ugsn_name} — {self.target_avg_score}'

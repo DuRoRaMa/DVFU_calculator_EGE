@@ -16,6 +16,8 @@ from .selectors import (
     get_direction_applications,
     get_direction_stats,
     get_university_stats,
+    get_priority_direction_stats,
+    get_new_model_direction_stats
 )
 
 
@@ -34,7 +36,43 @@ class DirectionStatsView(APIView):
 
         return Response(serializer.data)
 
+class PriorityDirectionStatsView(APIView):
+    """
+    Статистика по направлениям с галочкой 'Приоритет 2030'.
 
+    GET /api/admin/priority-direction-stats/
+    """
+
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request):
+        return Response(get_priority_direction_stats())
+
+class NewModelDirectionStatsView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request):
+        return Response(get_new_model_direction_stats())
+    
+class PublicDirectionMonitoringView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        stats = get_direction_stats()
+
+        result = [
+            {
+                'direction_code': row.get('direction_code'),
+                'average_score_by_vpp_count': row.get('average_score_by_vpp_count'),
+                'plan_applications_count': row.get('plan_applications_count'),
+                'plan_missing_count': row.get('plan_missing_count'),
+                'admission_plan': row.get('admission_plan'),
+                'plan_fill_percent': row.get('plan_fill_percent'),
+            }
+            for row in stats
+        ]
+
+        return Response(result)
 class DirectionApplicantsView(APIView):
     """
     Список заявлений по конкретному направлению.
