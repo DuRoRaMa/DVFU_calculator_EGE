@@ -25,6 +25,11 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
+import {
+  getCurrentUserFromStorage,
+  isAdminUser,
+} from '../../services/api';
+
 const SCHOOL_OPTIONS = [
   'ИМКТ',
   'ШЭМ',
@@ -92,9 +97,12 @@ const ProgramSelector = ({
   onSelectProgram,
 }) => {
   const navigate = useNavigate();
+  const isAdmin = isAdminUser(getCurrentUserFromStorage());
+
   const [school, setSchool] = useState('');
   const [search, setSearch] = useState('');
   const [onlyPriority2030, setOnlyPriority2030] = useState(false);
+  const [onlyNewModel, setOnlyNewModel] = useState(false);
 
   const goToCalculator = (program) => {
     onSelectProgram(program);
@@ -124,14 +132,31 @@ const ProgramSelector = ({
         .join(' ')
         .toLowerCase();
 
-      const matchesSearch = !normalizedSearch || searchText.includes(normalizedSearch);
-      const matchesPriority =
-        !onlyPriority2030 || Boolean(program.is_priority_2030);
+      const matchesSearch =
+        !normalizedSearch ||
+        searchText.includes(normalizedSearch);
 
-      return matchesSchool && matchesSearch && matchesPriority;
+      let matchesSpecialFilter = true;
+
+      if (onlyPriority2030 || onlyNewModel) {
+        matchesSpecialFilter =
+          (onlyPriority2030 && Boolean(program.is_priority_2030)) ||
+          (onlyNewModel && Boolean(program.is_new_model));
+      }
+
+      return (
+        matchesSchool &&
+        matchesSearch &&
+        matchesSpecialFilter
+      );
     });
-  }, [programs, school, search, onlyPriority2030]);
-
+  }, [
+    programs,
+    school,
+    search,
+    onlyPriority2030,
+    onlyNewModel,
+  ]);
   const groupedPrograms = useMemo(() => {
     return filteredPrograms.reduce((acc, program) => {
       const schoolName = getSchoolName(program);
@@ -223,6 +248,7 @@ const ProgramSelector = ({
           elevation={0}
           sx={{
             px: 1.5,
+            py: 0.75,
             minHeight: 56,
             display: 'flex',
             alignItems: 'center',
@@ -230,16 +256,36 @@ const ProgramSelector = ({
             border: '1px solid #e5e7eb',
           }}
         >
-          <FormControlLabel
-            sx={{ m: 0 }}
-            control={
-              <Switch
-                checked={onlyPriority2030}
-                onChange={(event) => setOnlyPriority2030(event.target.checked)}
-              />
-            }
-            label="Только Приоритет 2030"
-          />
+          <Stack
+            direction={{ xs: 'column', sm: 'row', md: 'column' }}
+            spacing={0}
+          >
+            <FormControlLabel
+              sx={{ m: 0 }}
+              control={
+                <Switch
+                  checked={onlyPriority2030}
+                  onChange={(event) =>
+                    setOnlyPriority2030(event.target.checked)
+                  }
+                />
+              }
+              label="Приоритет 2030"
+            />
+
+            <FormControlLabel
+              sx={{ m: 0 }}
+              control={
+                <Switch
+                  checked={onlyNewModel}
+                  onChange={(event) =>
+                    setOnlyNewModel(event.target.checked)
+                  }
+                />
+              }
+              label="Новая модель"
+            />
+          </Stack>
         </Paper>
       </Box>
 
@@ -275,6 +321,12 @@ const ProgramSelector = ({
             }}
           >
             {schoolPrograms.map((program) => {
+              const averageScoreByPlan = getMonitoringValue(
+                program,
+                'average_score_by_plan',
+                'average_score'
+              );
+
               const averageScoreByVppCount = getMonitoringValue(
                 program,
                 'average_score_by_vpp_count',
@@ -482,16 +534,76 @@ const ProgramSelector = ({
                           direction="row"
                           justifyContent="space-between"
                           alignItems="flex-start"
-                          spacing={1}
+                          spacing={1.5}
                         >
-                          <Box>
-                            <Stack direction="row" spacing={0.75} alignItems="center">
-                              <Typography variant="caption" color="text.secondary">
+                          {isAdmin && (
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Stack
+                                direction="row"
+                                spacing={0.75}
+                                alignItems="center"
+                              >
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  Средний по плану
+                                </Typography>
+
+                                <Tooltip
+                                  title="Сумма средних баллов ВПП в пределах плана, делённая на план набора. Если ВПП меньше плана, показатель снижается."
+                                  arrow
+                                >
+                                  <InfoOutlinedIcon
+                                    sx={{
+                                      fontSize: 16,
+                                      color: 'text.secondary',
+                                      cursor: 'help',
+                                    }}
+                                  />
+                                </Tooltip>
+                              </Stack>
+
+                              <Typography
+                                variant="h6"
+                                sx={{
+                                  mt: 0.25,
+                                  fontWeight: 900,
+                                  color: '#1d4ed8',
+                                }}
+                              >
+                                {averageScoreByPlan !== null &&
+                                averageScoreByPlan !== undefined
+                                  ? Number(averageScoreByPlan).toFixed(2)
+                                  : '—'}
+                              </Typography>
+                            </Box>
+                          )}
+
+                          <Box
+                            sx={{
+                              flex: 1,
+                              minWidth: 0,
+                              textAlign: isAdmin ? 'right' : 'left',
+                            }}
+                          >
+                            <Stack
+                              direction="row"
+                              spacing={0.75}
+                              alignItems="center"
+                              justifyContent={
+                                isAdmin ? 'flex-end' : 'flex-start'
+                              }
+                            >
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
                                 Средний балл по ВПП
                               </Typography>
 
                               <Tooltip
-                                title="Средний балл рассчитывается только по заявлениям, которые попали в ВПП в пределах плана набора."
+                                title="Фактический средний балл заявлений с ВПП в пределах плана набора."
                                 arrow
                               >
                                 <InfoOutlinedIcon
@@ -506,29 +618,16 @@ const ProgramSelector = ({
 
                             <Typography
                               variant="h6"
-                              sx={{ mt: 0.25, fontWeight: 900, color: '#1d4ed8' }}
+                              sx={{
+                                mt: 0.25,
+                                fontWeight: 900,
+                                color: '#1d4ed8',
+                              }}
                             >
                               {averageScoreByVppCount !== null &&
                               averageScoreByVppCount !== undefined
                                 ? Number(averageScoreByVppCount).toFixed(2)
                                 : '—'}
-                            </Typography>
-                          </Box>
-
-                          <Box sx={{ textAlign: 'right' }}>
-                            <Typography variant="caption" color="text.secondary">
-                              Не хватает ВПП
-                            </Typography>
-
-                            <Typography
-                              variant="h6"
-                              sx={{
-                                mt: 0.25,
-                                fontWeight: 900,
-                                color: planMissingCount > 0 ? '#b45309' : '#15803d',
-                              }}
-                            >
-                              {admissionPlan > 0 ? planMissingCount : '—'}
                             </Typography>
                           </Box>
                         </Stack>
@@ -669,7 +768,7 @@ const ProgramSelector = ({
           </Typography>
 
           <Typography variant="body2" color="text.secondary">
-            Попробуйте изменить институт, поисковый запрос или фильтр «Приоритет 2030».
+            Попробуйте изменить институт, поисковый запрос или фильтры направлений.
           </Typography>
         </Paper>
       )}

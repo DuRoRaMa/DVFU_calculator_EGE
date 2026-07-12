@@ -89,13 +89,21 @@ def get_priority_direction_stats():
         total_score_sum += plan_score_sum
         total_vpp_count += plan_applications_count
 
+        no_exams_count = row.get('no_exams_count') or 0
+
         if ugsn_code not in ugsn_groups:
             ugsn_groups[ugsn_code] = {
                 'ugsn_code': ugsn_code,
-                'ugsn_name': ugsn_target.get('ugsn_name') or f'УГСН {ugsn_code}',
-                'target_avg_score': ugsn_target.get('target_avg_score'),
+                'ugsn_name': (
+                    ugsn_target.get('ugsn_name')
+                    or f'УГСН {ugsn_code}'
+                ),
+                'target_avg_score': ugsn_target.get(
+                    'target_avg_score'
+                ),
                 'plan_score_sum': 0,
                 'plan_applications_count': 0,
+                'no_exams_count': 0,
                 'directions_count': 0,
                 'directions': [],
             }
@@ -103,17 +111,22 @@ def get_priority_direction_stats():
         ugsn_groups[ugsn_code]['plan_score_sum'] += plan_score_sum
         ugsn_groups[ugsn_code]['plan_applications_count'] += plan_applications_count
         ugsn_groups[ugsn_code]['directions_count'] += 1
-
+        ugsn_groups[ugsn_code]['no_exams_count'] += no_exams_count
         direction_item = {
             'direction_code': direction_code,
             'direction_name': row.get('direction_name'),
             'ugsn_code': ugsn_code,
             'ugsn_name': ugsn_groups[ugsn_code]['ugsn_name'],
+
             'actual_avg_score': actual_avg_score,
             'target_avg_score': target_avg_score,
             'delta': direction_delta,
             'status': get_status_by_delta(direction_delta),
+
+            'admission_plan': row.get('admission_plan') or 0,
             'vpp_count': plan_applications_count,
+            'plan_missing_count': row.get('plan_missing_count') or 0,
+            'no_exams_count': row.get('no_exams_count') or 0,
         }
 
         directions.append(direction_item)
@@ -147,6 +160,7 @@ def get_priority_direction_stats():
             'status': get_status_by_delta(delta),
             'directions_count': group['directions_count'],
             'vpp_count': group_vpp_count,
+            'no_exams_count': group['no_exams_count'],
             'directions': sorted(
                 group['directions'],
                 key=lambda item: item['direction_code'],
@@ -485,25 +499,76 @@ def get_new_model_direction_stats():
         .values_list('code', flat=True)
     )
 
-    rows = [
+    source_rows = [
         row
         for row in get_direction_stats()
         if row.get('direction_code') in new_model_codes
     ]
 
-    plan_score_sum = sum(row.get('plan_score_sum') or 0 for row in rows)
-    vpp_count = sum(row.get('plan_applications_count') or 0 for row in rows)
-    admission_plan = sum(row.get('admission_plan') or 0 for row in rows)
-    missing = sum(row.get('plan_missing_count') or 0 for row in rows)
+    directions = []
+
+    total_score_sum = 0.0
+    total_vpp_count = 0
+    total_admission_plan = 0
+    total_missing_count = 0
+    total_no_exams_count = 0
+
+    for row in source_rows:
+        plan_score_sum = row.get('plan_score_sum') or 0
+        vpp_count = row.get('plan_applications_count') or 0
+        admission_plan = row.get('admission_plan') or 0
+        missing_count = row.get('plan_missing_count') or 0
+        no_exams_count = row.get('no_exams_count') or 0
+
+        total_score_sum += plan_score_sum
+        total_vpp_count += vpp_count
+        total_admission_plan += admission_plan
+        total_missing_count += missing_count
+        total_no_exams_count += no_exams_count
+
+        directions.append({
+            'direction_code': row.get('direction_code'),
+            'direction_name': row.get('direction_name'),
+
+            'average_score_by_vpp_count': row.get(
+                'average_score_by_vpp_count'
+            ),
+
+            'admission_plan': admission_plan,
+            'plan_applications_count': vpp_count,
+            'plan_missing_count': missing_count,
+            'no_exams_count': no_exams_count,
+        })
+
+    average_score_by_vpp_count = (
+        round(total_score_sum / total_vpp_count, 2)
+        if total_vpp_count > 0
+        else 0
+    )
+
+    plan_fill_percent = (
+        round(
+            total_vpp_count / total_admission_plan * 100,
+            2,
+        )
+        if total_admission_plan > 0
+        else 0
+    )
 
     return {
         'aggregate': {
-            'directions_count': len(rows),
-            'average_score_by_vpp_count': round(plan_score_sum / vpp_count, 2) if vpp_count else 0,
-            'plan_applications_count': vpp_count,
-            'admission_plan': admission_plan,
-            'plan_missing_count': missing,
-            'plan_fill_percent': round(vpp_count / admission_plan * 100, 2) if admission_plan else 0,
+            'directions_count': len(directions),
+            'average_score_by_vpp_count': (
+                average_score_by_vpp_count
+            ),
+            'admission_plan': total_admission_plan,
+            'plan_applications_count': total_vpp_count,
+            'plan_missing_count': total_missing_count,
+            'plan_fill_percent': plan_fill_percent,
+            'no_exams_count': total_no_exams_count,
         },
-        'directions': rows,
+        'directions': sorted(
+            directions,
+            key=lambda item: item['direction_code'] or '',
+        ),
     }

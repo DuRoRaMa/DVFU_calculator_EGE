@@ -434,6 +434,7 @@ const PriorityDirectionsStats = () => {
                   <TableCell align="right">Отклонение</TableCell>
                   <TableCell align="right">НПС</TableCell>
                   <TableCell align="right">ВПП</TableCell>
+                  <TableCell align="right">БВИ</TableCell>
                   <TableCell align="right">Статус</TableCell>
                 </TableRow>
               </TableHead>
@@ -474,7 +475,9 @@ const PriorityDirectionsStats = () => {
                     <TableCell align="right">
                       {numberOrDash(row.vpp_count)}
                     </TableCell>
-
+                    <TableCell align="right">
+                      {numberOrDash(row.no_exams_count)}
+                    </TableCell>
                     <TableCell align="right">
                       <Chip
                         size="small"
@@ -517,6 +520,7 @@ const PriorityDirectionsStats = () => {
                   <TableCell align="right">Цель НПС</TableCell>
                   <TableCell align="right">Отклонение</TableCell>
                   <TableCell align="right">ВПП</TableCell>
+                  <TableCell align="right">БВИ</TableCell>
                   <TableCell align="right">Статус</TableCell>
                 </TableRow>
               </TableHead>
@@ -557,7 +561,9 @@ const PriorityDirectionsStats = () => {
                     <TableCell align="right">
                       {numberOrDash(row.vpp_count)}
                     </TableCell>
-
+                    <TableCell align="right">
+                      {numberOrDash(row.no_exams_count)}
+                    </TableCell>
                     <TableCell align="right">
                       <Chip
                         size="small"

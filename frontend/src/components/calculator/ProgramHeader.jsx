@@ -552,11 +552,11 @@ const ProgramHeader = ({
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
               icon={<TrendingUpIcon />}
-              label="Средний по плану"
-              value={formatScore(monitoringAvgScoreByPlan)}
-              caption="Сумма ВПП / план набора"
-              tone={isVppPlanClosed ? 'success' : 'warning'}
-              tooltip="Показатель считается как сумма средних баллов заявлений с ВПП в пределах плана набора, делённая на план набора. Если ВПП меньше плана, показатель снижается."
+              label="Средний балл по ВПП"
+              value={formatScore(monitoringAvgScoreByVppCount)}
+              caption="Средний балл найденных ВПП"
+              tone="success"
+              tooltip="Средний балл рассчитывается только по заявлениям с высшим проходным приоритетом, попавшим в расчёт в пределах плана набора."
             />
           </Grid>
         </Grid>
@@ -585,7 +585,11 @@ const ProgramHeader = ({
               </Typography>
 
               <Tooltip
-                title="Показываются два разных показателя. «Средний по плану» делится на план набора. «Средний по ВПП» делится только на количество найденных ВПП в пределах плана."
+                title={
+                  isAdmin
+                    ? 'Для администратора показываются два показателя: средний по плану и фактический средний балл найденных ВПП.'
+                    : 'Показывается фактический средний балл заявлений с ВПП в пределах плана набора.'
+                }
                 arrow
               >
                 <InfoOutlinedIcon
@@ -609,23 +613,25 @@ const ProgramHeader = ({
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="text.secondary">
-                  Средний по плану
-                </Typography>
+              {isAdmin && (
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="text.secondary">
+                    Средний по плану
+                  </Typography>
 
-                <Typography
-                  variant="h6"
-                  className="program-card-number"
-                  sx={{ fontWeight: 800 }}
-                >
-                  {formatScore(monitoringAvgScoreByPlan)}
-                </Typography>
+                  <Typography
+                    variant="h6"
+                    className="program-card-number"
+                    sx={{ fontWeight: 800 }}
+                  >
+                    {formatScore(monitoringAvgScoreByPlan)}
+                  </Typography>
 
-                <Typography variant="caption" color="text.secondary">
-                  Сумма ВПП / план набора
-                </Typography>
-              </Grid>
+                  <Typography variant="caption" color="text.secondary">
+                    Сумма баллов ВПП / план набора
+                  </Typography>
+                </Grid>
+              )}
 
               <Grid item xs={12} sm={6} md={3}>
                 <Typography variant="body2" color="text.secondary">

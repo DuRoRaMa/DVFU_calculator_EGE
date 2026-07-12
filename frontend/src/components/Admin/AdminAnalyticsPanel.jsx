@@ -22,7 +22,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import PriorityDirectionsStats from './PriorityDirectionsStats';
+import SpecialDirectionsStats from './SpecialDirectionsStats';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
@@ -637,11 +637,17 @@ const AdminAnalyticsPanel = () => {
           caption={`Закрыто: ${analytics.closedVppDirectionsCount}`}
           tone={analytics.missingVppDirectionsCount > 0 ? 'warning' : 'success'}
         />
+        <StatCard
+          title="БВИ"
+          value={numberOrZero(universityStats?.no_exams_count)}
+          caption="Количество БВИ по всем направлениям"
+          tooltip="Количество заявлений без вступительных испытаний по всем направлениям подготовки."
+        />
       </Box>
       <Box sx={{ mb: 3 }}>
         <UniversityVppAverageDynamics />
       </Box>
-      <PriorityDirectionsStats />
+      <SpecialDirectionsStats />
       <Box
         sx={{
           display: 'grid',

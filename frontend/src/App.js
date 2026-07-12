@@ -32,10 +32,12 @@ import ProtectedRoute from './components/Auth/ProtectedRoute';
 
 import {
   clearAuthTokens,
+  getDirectionStats,
   getMe,
   getPrograms,
   getPublicDirectionMonitoring,
   hasAuthTokens,
+  isAdminUser,
   saveCurrentUser,
 } from './services/api';
 
@@ -236,15 +238,16 @@ const AppContent = () => {
         let directionStats = [];
 
         try {
-          const monitoringResponse =
-            await getPublicDirectionMonitoring();
+          const monitoringResponse = isAdminUser(user)
+            ? await getDirectionStats()
+            : await getPublicDirectionMonitoring();
 
           directionStats = Array.isArray(monitoringResponse.data)
             ? monitoringResponse.data
             : [];
         } catch (monitoringError) {
           console.error(
-            'Не удалось загрузить общедоступный мониторинг ВПП:',
+            'Не удалось загрузить мониторинг ВПП:',
             monitoringError
           );
 
